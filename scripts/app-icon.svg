@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 米黄色背景 (Warm Cream / Beige) -->
+  <rect width="512" height="512" rx="112" fill="#EDEAE3"/>
+  <g transform="translate(96, 96) scale(13.333333333333334)" fill="#111111">
+    <!-- 主网关控制核心 (带内挖槽) -->
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2H16V10H10V16H2V2ZM6 6H12V8H8V12H6V6Z"/>
+    <!-- 外部接入的独立厂商模块块 (OpenAI, Claude, 本地模型等) -->
+    <path d="M18 2H22V6H18V2Z"/>
+    <path d="M18 10H22V14H18V10Z"/>
+    <path d="M10 18H14V22H10V18Z"/>
+    <path d="M18 18H22V22H18V18Z"/>
+  </g>
+</svg>

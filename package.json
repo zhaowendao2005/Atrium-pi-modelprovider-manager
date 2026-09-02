@@ -1,0 +1,69 @@
+{
+  "name": "pi-modelprovider-manager",
+  "version": "1.0.0",
+  "description": "Pi Model Provider Manager with Visual Desktop UI and Pi Agent Extension",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:ui": "vite",
+    "clean": "rimraf dist",
+    "build:ext": "tsup",
+    "build:ui": "vue-tsc --noEmit && vite build",
+    "build:tauri": "tauri build --no-bundle && node scripts/copy-binary.js",
+    "build:no-tauri": "pnpm clean && pnpm build:ext && pnpm build:ui",
+    "build": "pnpm clean && pnpm build:ext && pnpm build:tauri",
+    "build:all": "pnpm build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri"
+  },
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-coding-agent",
+    "model-provider",
+    "tauri",
+    "vue"
+  ],
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "latest",
+    "@earendil-works/pi-coding-agent": "latest",
+    "@earendil-works/pi-tui": "latest",
+    "@sinclair/typebox": "^0.34.14",
+    "@tauri-apps/api": "^2.2.0",
+    "@tauri-apps/plugin-fs": "^2.2.0",
+    "clsx": "^2.1.1",
+    "lucide-vue-next": "^0.475.0",
+    "pinia": "^2.3.1",
+    "tailwind-merge": "^3.0.1",
+    "typebox": "^1.3.25",
+    "vue": "^3.5.13",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^22.13.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "rimraf": "^6.1.3",
+    "tailwindcss": "^3.4.17",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

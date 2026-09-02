@@ -1,0 +1,73 @@
+import { defineStore } from "pinia";
+import type { ProviderSchema, ModelSchema } from "../../types/index.js";
+
+export type DrawerType = "provider-add" | "provider-edit" | "model-add" | "model-edit" | null;
+
+export const useDrawerStore = defineStore("drawer", {
+  state: () => ({
+    isOpen: false as boolean,
+    drawerType: null as DrawerType,
+    targetProviderId: null as string | null,
+    editingProvider: null as ProviderSchema | null,
+    editingModel: null as ModelSchema | null,
+  }),
+
+  actions: {
+    openProviderDrawer(type: "provider-add" | "provider-edit", provider?: ProviderSchema) {
+      this.drawerType = type;
+      if (type === "provider-edit" && provider) {
+        this.editingProvider = JSON.parse(JSON.stringify(provider));
+      } else {
+        this.editingProvider = {
+          id: "",
+          name: "",
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: "",
+          api: "openai-completions",
+          authHeader: true,
+          enabled: true,
+          autoDiscover: true,
+          compat: {
+            supportsUsageInStreaming: true,
+            supportsDeveloperRole: true,
+          },
+          models: [],
+        };
+      }
+      this.isOpen = true;
+    },
+
+    openModelDrawer(type: "model-add" | "model-edit", providerId: string, model?: ModelSchema) {
+      this.drawerType = type;
+      this.targetProviderId = providerId;
+      if (type === "model-edit" && model) {
+        this.editingModel = JSON.parse(JSON.stringify(model));
+      } else {
+        this.editingModel = {
+          id: "",
+          name: "",
+          family: "Other",
+          reasoning: false,
+          input: ["text"],
+          contextWindow: 128000,
+          maxTokens: 16384,
+          cost: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+          },
+        };
+      }
+      this.isOpen = true;
+    },
+
+    closeDrawer() {
+      this.isOpen = false;
+      this.drawerType = null;
+      this.editingProvider = null;
+      this.editingModel = null;
+      this.targetProviderId = null;
+    },
+  },
+});

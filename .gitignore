@@ -1,1 +1,4 @@
 docs/Reference/
+node_modules
+dist
+src-tauri/target
