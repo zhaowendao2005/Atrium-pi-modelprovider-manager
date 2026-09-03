@@ -78,3 +78,24 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Apple Style Sleek Scrollbar */
+.apple-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.apple-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.apple-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.28);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+.apple-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 140, 140, 0.5);
+}
+.apple-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 140, 140, 0.28) transparent;
+}

@@ -6,6 +6,7 @@
     <!-- Main Content Area (Independent scroll & follow parent height) -->
     <main class="flex-1 h-full overflow-hidden flex flex-col bg-background/50">
       <ProvidersView v-if="navStore.activeTab === 'providers'" />
+      <TestingView v-else-if="navStore.activeTab === 'testing'" />
       <SettingsView v-else-if="navStore.activeTab === 'settings'" />
     </main>
 
@@ -19,6 +20,7 @@
 import { onMounted } from "vue";
 import Sidebar from "./Sidebar.vue";
 import ProvidersView from "../providers/ProvidersView.vue";
+import TestingView from "../testing/TestingView.vue";
 import SettingsView from "../settings/SettingsView.vue";
 import ProviderDrawer from "../providers/components/ProviderDrawer.vue";
 import ModelDrawer from "../providers/components/ModelDrawer.vue";

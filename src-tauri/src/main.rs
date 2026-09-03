@@ -12,6 +12,9 @@ use service::db::{
     init_sqlite_db, DbState,
 };
 use service::preset::{get_preset_index, get_provider_preset};
+use service::test_runner::{
+    abort_pi_agent_rpc, create_test_workspace, open_workspace_in_explorer, start_pi_agent_rpc,
+};
 
 fn main() {
     let storage_dir = get_storage_dir().expect("Failed to get storage directory");
@@ -36,7 +39,12 @@ fn main() {
             db_delete_model,
             // Preset Domain
             get_preset_index,
-            get_provider_preset
+            get_provider_preset,
+            // Test Runner & Pi Agent RPC Domain
+            create_test_workspace,
+            start_pi_agent_rpc,
+            abort_pi_agent_rpc,
+            open_workspace_in_explorer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
