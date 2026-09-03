@@ -11,12 +11,13 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "node scripts/generate-presets.mjs && tauri dev",
     "dev:ui": "vite",
+    "generate:presets": "node scripts/generate-presets.mjs",
     "clean": "rimraf dist",
     "build:ext": "tsup",
     "build:ui": "vue-tsc --noEmit && vite build",
-    "build:tauri": "tauri build --no-bundle && node scripts/copy-binary.js",
+    "build:tauri": "node scripts/generate-presets.mjs && tauri build --no-bundle && node scripts/copy-binary.js",
     "build:no-tauri": "pnpm clean && pnpm build:ext && pnpm build:ui",
     "build": "pnpm clean && pnpm build:ext && pnpm build:tauri",
     "build:all": "pnpm build",

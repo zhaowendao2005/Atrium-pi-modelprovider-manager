@@ -17,6 +17,9 @@ export const useDrawerStore = defineStore("drawer", {
       this.drawerType = type;
       if (type === "provider-edit" && provider) {
         this.editingProvider = JSON.parse(JSON.stringify(provider));
+        if (!this.editingProvider!.headers) this.editingProvider!.headers = {};
+        if (!this.editingProvider!.compat) this.editingProvider!.compat = {};
+        if (!this.editingProvider!.env) this.editingProvider!.env = {};
       } else {
         this.editingProvider = {
           id: "",
@@ -27,6 +30,8 @@ export const useDrawerStore = defineStore("drawer", {
           authHeader: true,
           enabled: true,
           autoDiscover: true,
+          headers: {},
+          env: {},
           compat: {
             supportsUsageInStreaming: true,
             supportsDeveloperRole: true,
@@ -42,6 +47,15 @@ export const useDrawerStore = defineStore("drawer", {
       this.targetProviderId = providerId;
       if (type === "model-edit" && model) {
         this.editingModel = JSON.parse(JSON.stringify(model));
+        if (!this.editingModel!.headers) this.editingModel!.headers = {};
+        if (!this.editingModel!.samplingParams) this.editingModel!.samplingParams = {};
+        if (!this.editingModel!.thinkingLevelMap) this.editingModel!.thinkingLevelMap = {};
+        if (!this.editingModel!.compat) this.editingModel!.compat = {};
+        if (!this.editingModel!.cost) {
+          this.editingModel!.cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, tiers: [] };
+        } else if (!this.editingModel!.cost.tiers) {
+          this.editingModel!.cost.tiers = [];
+        }
       } else {
         this.editingModel = {
           id: "",
@@ -51,11 +65,16 @@ export const useDrawerStore = defineStore("drawer", {
           input: ["text"],
           contextWindow: 128000,
           maxTokens: 16384,
+          headers: {},
+          samplingParams: {},
+          thinkingLevelMap: {},
+          compat: {},
           cost: {
             input: 0,
             output: 0,
             cacheRead: 0,
             cacheWrite: 0,
+            tiers: [],
           },
         };
       }

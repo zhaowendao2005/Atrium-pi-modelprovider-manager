@@ -41,6 +41,11 @@
 
       <!-- Capability Badges (Pure SVGs) -->
       <div class="flex flex-wrap items-center gap-1.5 mt-3">
+        <!-- Overridden Wire Protocol -->
+        <Badge v-if="props.model.api" size="sm" variant="default">
+          <span>{{ props.model.api }}</span>
+        </Badge>
+
         <!-- Reasoning / Thinking Badge -->
         <Badge v-if="props.model.reasoning" size="sm" variant="purple">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,8 +115,6 @@ function editModel() {
 }
 
 function deleteModel() {
-  if (confirm(`确定要移除模型 '${props.model.id}' 吗？`)) {
-    providerStore.deleteModel(props.providerId, props.model.id);
-  }
+  providerStore.deleteModel(props.providerId, props.model.id);
 }
 </script>

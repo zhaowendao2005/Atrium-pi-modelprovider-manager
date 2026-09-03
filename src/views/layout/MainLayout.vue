@@ -25,13 +25,16 @@ import ModelDrawer from "../providers/components/ModelDrawer.vue";
 import { useNavigationStore } from "../../stores/windows/navigation.js";
 import { useProviderStore } from "../../stores/provider.js";
 import { useSettingsStore } from "../../stores/settings.js";
+import { usePresetsStore } from "../../stores/presets.js";
 
 const navStore = useNavigationStore();
 const providerStore = useProviderStore();
 const settingsStore = useSettingsStore();
+const presetsStore = usePresetsStore();
 
 onMounted(() => {
   providerStore.init();
   settingsStore.init();
+  presetsStore.loadIndex();
 });
 </script>

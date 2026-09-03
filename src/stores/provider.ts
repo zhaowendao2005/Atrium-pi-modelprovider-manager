@@ -1,7 +1,9 @@
 import { defineStore } from "pinia";
 import type { ProviderSchema, ModelSchema } from "../types/index.js";
 import { loadConfigFromYaml, saveConfigToYaml } from "../utils/storage.js";
+import { dbLoadAllProviders, dbSaveProvider, dbSaveModel, dbDeleteProvider, dbDeleteModel } from "../utils/sqlite-storage.js";
 import { useSettingsStore } from "./settings.js";
+import { safeFetch } from "../utils/http.js";
 
 export const useProviderStore = defineStore("provider", {
   state: () => ({
@@ -11,6 +13,8 @@ export const useProviderStore = defineStore("provider", {
     selectedFamily: "all" as string,
     isTestingConnection: false as boolean,
     testResult: null as { ok: boolean; message: string; latencyMs?: number } | null,
+    autoSaveStatus: "idle" as "idle" | "saving" | "saved" | "error",
+    saveTimer: null as any,
   }),
 
   getters: {
@@ -76,40 +80,92 @@ export const useProviderStore = defineStore("provider", {
   },
 
   actions: {
-    init() {
-      const config = loadConfigFromYaml();
-      this.providers = config.providers;
-      this.activeProviderId =
-        config.settings.activeProviderId || this.providers[0]?.id || "";
+    async init() {
+      await this.loadProviders();
     },
 
-    persist() {
-      const settingsStore = useSettingsStore();
-      saveConfigToYaml({
-        version: 1,
-        settings: {
-          ...settingsStore.settings,
-          activeProviderId: this.activeProviderId,
-        },
-        providers: this.providers,
-      });
+    async loadProviders() {
+      try {
+        const list = await dbLoadAllProviders();
+        this.providers = list;
+        const settingsStore = useSettingsStore();
+        this.activeProviderId =
+          settingsStore.settings.activeProviderId || this.providers[0]?.id || "";
+      } catch (err) {
+        console.warn("[providerStore] SQLite load failed, fallback to YAML:", err);
+        const config = loadConfigFromYaml();
+        this.providers = config.providers;
+        this.activeProviderId =
+          config.settings.activeProviderId || this.providers[0]?.id || "";
+      }
+    },
+
+    /**
+     * 智能防抖无感自动保存：自动同步到 SQLite 并镜像持久化至 YAML
+     */
+    persist(immediate = false) {
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer);
+        this.saveTimer = null;
+      }
+
+      this.autoSaveStatus = "saving";
+
+      const executeSave = async () => {
+        try {
+          const settingsStore = useSettingsStore();
+
+          // 1. 镜像保存到 YAML (保证扩展运行时兼容)
+          saveConfigToYaml({
+            version: 1,
+            settings: {
+              ...settingsStore.settings,
+              activeProviderId: this.activeProviderId,
+            },
+            providers: this.providers,
+          });
+
+          // 2. 持久化至当前活动 Provider 的 SQLite 表
+          if (this.activeProvider) {
+            await dbSaveProvider(JSON.parse(JSON.stringify(this.activeProvider)));
+          }
+
+          this.autoSaveStatus = "saved";
+          setTimeout(() => {
+            if (this.autoSaveStatus === "saved") {
+              this.autoSaveStatus = "idle";
+            }
+          }, 2000);
+        } catch (e) {
+          console.error("[providerStore] Auto-save error:", e);
+          this.autoSaveStatus = "error";
+        }
+      };
+
+      if (immediate) {
+        executeSave();
+      } else {
+        this.saveTimer = setTimeout(executeSave, 300);
+      }
     },
 
     setActiveProvider(id: string) {
       this.activeProviderId = id;
       this.selectedFamily = "all";
       this.testResult = null;
-      this.persist();
+      this.persist(true);
     },
 
     addProvider(provider: ProviderSchema) {
-      this.providers.push({
+      const p = {
         ...provider,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+      this.providers.push(p);
       this.activeProviderId = provider.id;
-      this.persist();
+      dbSaveProvider(p).catch(console.error);
+      this.persist(true);
     },
 
     updateProvider(provider: ProviderSchema) {
@@ -119,7 +175,8 @@ export const useProviderStore = defineStore("provider", {
           ...provider,
           updatedAt: Date.now(),
         };
-        this.persist();
+        dbSaveProvider(this.providers[index]).catch(console.error);
+        this.persist(true);
       }
     },
 
@@ -128,7 +185,8 @@ export const useProviderStore = defineStore("provider", {
       if (this.activeProviderId === id) {
         this.activeProviderId = this.providers[0]?.id || "";
       }
-      this.persist();
+      dbDeleteProvider(id).catch(console.error);
+      this.persist(true);
     },
 
     toggleProvider(id: string) {
@@ -136,7 +194,8 @@ export const useProviderStore = defineStore("provider", {
       if (p) {
         p.enabled = p.enabled !== false ? false : true;
         p.updatedAt = Date.now();
-        this.persist();
+        dbSaveProvider(p).catch(console.error);
+        this.persist(true);
       }
     },
 
@@ -146,7 +205,8 @@ export const useProviderStore = defineStore("provider", {
         if (!p.models) p.models = [];
         p.models.push(model);
         p.updatedAt = Date.now();
-        this.persist();
+        dbSaveModel(providerId, model).catch(console.error);
+        this.persist(true);
       }
     },
 
@@ -157,7 +217,8 @@ export const useProviderStore = defineStore("provider", {
         if (index !== -1) {
           p.models[index] = model;
           p.updatedAt = Date.now();
-          this.persist();
+          dbSaveModel(providerId, model).catch(console.error);
+          this.persist(true);
         }
       }
     },
@@ -166,6 +227,20 @@ export const useProviderStore = defineStore("provider", {
       const p = this.providers.find((item) => item.id === providerId);
       if (p && p.models) {
         p.models = p.models.filter((m) => m.id !== modelId);
+        p.updatedAt = Date.now();
+        dbDeleteModel(providerId, modelId).catch(console.error);
+        this.persist();
+      }
+    },
+
+    deleteModelsByFamily(providerId: string, family: string) {
+      const p = this.providers.find((item) => item.id === providerId);
+      if (p && p.models) {
+        const toDelete = p.models.filter((m) => (m.family || "Other") === family);
+        for (const m of toDelete) {
+          dbDeleteModel(providerId, m.id).catch(console.error);
+        }
+        p.models = p.models.filter((m) => (m.family || "Other") !== family);
         p.updatedAt = Date.now();
         this.persist();
       }
@@ -189,7 +264,7 @@ export const useProviderStore = defineStore("provider", {
           headers["Authorization"] = `Bearer ${target.apiKey}`;
         }
 
-        const res = await fetch(endpoint, {
+        const res = await safeFetch(endpoint, {
           method: "GET",
           headers,
           signal: AbortSignal.timeout(8000),

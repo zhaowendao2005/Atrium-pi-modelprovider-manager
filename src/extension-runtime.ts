@@ -78,6 +78,7 @@ export class PiExtensionRuntime {
         maxTokens: m.maxTokens || 16384,
         cost: m.cost || { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         headers: m.headers,
+        samplingParams: m.samplingParams,
         compat: m.compat || provider.compat,
       })),
     });

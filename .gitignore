@@ -2,3 +2,4 @@ docs/Reference/
 node_modules
 dist
 src-tauri/target
+src/assets/model-family-preset.json

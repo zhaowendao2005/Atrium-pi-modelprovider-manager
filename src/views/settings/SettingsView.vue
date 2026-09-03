@@ -152,7 +152,64 @@
           </div>
         </div>
 
-        <!-- 4. Raw YAML Preview Card -->
+        <!-- 4. Model Family Registry Card -->
+        <div class="p-5 rounded-2xl bg-card border border-border/80 shadow-sm flex flex-col gap-3.5">
+          <div class="flex items-center justify-between pb-2 border-b border-border/50">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-foreground">模型系列映射库 (Family Registry)</h3>
+                <p class="text-xs text-muted-foreground">基于 Cherry Studio 权威数据源，支持 5 个 gh-proxy 镜像备用源容灾与毫秒级校验</p>
+              </div>
+            </div>
+
+            <!-- Check Update Button -->
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-8 px-3 text-xs gap-1.5"
+              :loading="isUpdatingRegistry"
+              @click="handleCheckRegistryUpdate"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>检查更新</span>
+            </Button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50 flex flex-col gap-1">
+              <span class="text-[11px] text-muted-foreground">已收录模型映射</span>
+              <span class="font-bold text-base text-foreground font-mono">{{ registryStats.totalModels }} 个</span>
+              <span class="text-[10px] text-muted-foreground/70">内置: {{ registryStats.presetCount }} | 动态: {{ registryStats.dynamicCount }}</span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50 flex flex-col gap-1">
+              <span class="text-[11px] text-muted-foreground">上次检查时间</span>
+              <span class="font-medium text-xs text-foreground mt-1">{{ formattedLastCheck }}</span>
+              <span class="text-[10px] text-muted-foreground/70">策略: HEAD + ETag (零流量比对)</span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50 flex flex-col gap-1">
+              <span class="text-[11px] text-muted-foreground">当前首选加速节点</span>
+              <span class="font-mono text-[11px] text-primary truncate mt-1" :title="registryStats.preferredMirror">
+                {{ formatMirrorDomain(registryStats.preferredMirror) }}
+              </span>
+              <span class="text-[10px] text-muted-foreground/70">多路容灾自动故障转移 (3s)</span>
+            </div>
+          </div>
+
+          <div v-if="updateFeedback" class="text-xs px-3 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+            {{ updateFeedback }}
+          </div>
+        </div>
+
+        <!-- 5. Raw YAML Preview Card -->
         <div class="p-5 rounded-2xl bg-card border border-border/80 shadow-sm flex flex-col gap-3">
           <div class="flex items-center justify-between pb-2 border-b border-border/50">
             <h3 class="font-semibold text-sm text-foreground">当前配置 YAML 实时预览</h3>
@@ -167,16 +224,57 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import * as YAML from "yaml";
 import { useSettingsStore } from "../../stores/settings.js";
 import { useProviderStore } from "../../stores/provider.js";
+import { getRegistryStats, checkFamilyMapUpdate } from "../../utils/model-family-registry.js";
 import AppleScrollArea from "../../components/ui/AppleScrollArea.vue";
 import Button from "../../components/ui/Button.vue";
 import Switch from "../../components/ui/Switch.vue";
 
 const settingsStore = useSettingsStore();
 const providerStore = useProviderStore();
+
+// Model Family Registry states
+const isUpdatingRegistry = ref(false);
+const updateFeedback = ref("");
+const registryStats = ref(getRegistryStats());
+
+const formattedLastCheck = computed(() => {
+  const t = registryStats.value.lastCheckTime;
+  if (!t) return "尚未联网检查 (当前为内置预置)";
+  const d = new Date(t);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+});
+
+function formatMirrorDomain(url: string) {
+  if (!url) return "未连接";
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return url.substring(0, 25);
+  }
+}
+
+async function handleCheckRegistryUpdate() {
+  isUpdatingRegistry.value = true;
+  updateFeedback.value = "";
+  try {
+    const res = await checkFamilyMapUpdate(true);
+    registryStats.value = getRegistryStats();
+    updateFeedback.value = res.message;
+  } catch (err: any) {
+    updateFeedback.value = `检查失败: ${err?.message || String(err)}`;
+  } finally {
+    isUpdatingRegistry.value = false;
+  }
+}
+
+onMounted(() => {
+  registryStats.value = getRegistryStats();
+});
 
 const rawYaml = computed(() => {
   return YAML.stringify({

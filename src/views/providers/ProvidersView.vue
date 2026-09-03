@@ -144,6 +144,18 @@
                   </svg>
                 </button>
               </div>
+
+              <!-- 2 行小字：预览当前模型 Fetch 地址和请求地址 -->
+              <div class="mt-1.5 flex flex-col gap-0.5 text-[11px] font-mono text-muted-foreground/80 select-all">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="text-muted-foreground/60 font-sans font-medium flex-shrink-0">请求地址:</span>
+                  <span class="truncate text-foreground/80">{{ providerStore.activeProvider.baseUrl || '-' }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="text-muted-foreground/60 font-sans font-medium flex-shrink-0">模型 Fetch 地址:</span>
+                  <span class="truncate text-primary/90 font-medium">{{ currentModelFetchUrl }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -260,15 +272,32 @@
         请在左侧列表中选择一个提供商，或点击「新建」添加。
       </p>
     </div>
+
+    <!-- Model Discovery & Batch Add Dialog (Teleported to body) -->
+    <ModelDiscoveryDialog
+      v-if="providerStore.activeProvider"
+      v-model="isDiscoveryDialogOpen"
+      :provider-id="providerStore.activeProvider.id"
+      :provider-name="providerStore.activeProvider.name || providerStore.activeProvider.id"
+      :fetch-url="currentModelFetchUrl"
+      :raw-models="discoveredRawModels"
+      :existing-model-ids="currentProviderModelIds"
+      @confirm="handleConfirmAddModels"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useProviderStore } from "../../stores/provider.js";
 import { useDrawerStore } from "../../stores/windows/drawer.js";
+import { usePresetsStore } from "../../stores/presets.js";
+import type { ModelSchema } from "../../types/index.js";
+import { safeFetch } from "../../utils/http.js";
+import { guessModelFamily, guessModelCapabilities } from "../../utils/model-family.js";
 import ProviderSidebarList from "./components/ProviderSidebarList.vue";
 import ModelFamilyGroup from "./components/ModelFamilyGroup.vue";
+import ModelDiscoveryDialog from "./components/ModelDiscoveryDialog.vue";
 import Button from "../../components/ui/Button.vue";
 import Badge from "../../components/ui/Badge.vue";
 import Switch from "../../components/ui/Switch.vue";
@@ -276,9 +305,24 @@ import AppleScrollArea from "../../components/ui/AppleScrollArea.vue";
 
 const providerStore = useProviderStore();
 const drawerStore = useDrawerStore();
+const presetsStore = usePresetsStore();
 
 const showApiKey = ref(false);
 const isDiscovering = ref(false);
+
+// Dialog state
+const isDiscoveryDialogOpen = ref(false);
+const discoveredRawModels = ref<Array<{ id: string; name?: string; [key: string]: any }>>([]);
+
+const currentModelFetchUrl = computed(() => {
+  const p = providerStore.activeProvider;
+  if (!p || !p.baseUrl) return "-";
+  return p.discoveryEndpoint || `${p.baseUrl.replace(/\/+$/, "")}/models`;
+});
+
+const currentProviderModelIds = computed(() => {
+  return providerStore.activeProvider?.models?.map((m) => m.id) || [];
+});
 
 function toggleActive(val: boolean) {
   if (providerStore.activeProvider) {
@@ -305,47 +349,39 @@ function onBaseUrlInput(e: Event) {
 
 async function discoverRemoteModels() {
   const p = providerStore.activeProvider;
-  if (!p) return;
+  if (!p || !p.baseUrl) return;
 
   isDiscovering.value = true;
   try {
-    const endpoint = p.discoveryEndpoint || `${p.baseUrl.replace(/\/+$/, "")}/models`;
+    const endpoint = currentModelFetchUrl.value;
     const headers: Record<string, string> = { ...p.headers };
     if (p.apiKey && !p.apiKey.startsWith("$")) {
       headers["Authorization"] = `Bearer ${p.apiKey}`;
     }
 
-    const res = await fetch(endpoint, {
+    const res = await safeFetch(endpoint, {
       method: "GET",
       headers,
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (res.ok) {
-      const data = (await res.json()) as { data?: Array<{ id: string }> };
-      if (data.data && Array.isArray(data.data)) {
-        let addedCount = 0;
-        if (!p.models) p.models = [];
-        const existingIds = new Set(p.models.map((m) => m.id));
+      const json = await res.json();
+      let list: Array<{ id: string; name?: string }> = [];
 
-        for (const item of data.data) {
-          if (!existingIds.has(item.id)) {
-            p.models.push({
-              id: item.id,
-              name: item.id,
-              family: guessFamily(item.id),
-              reasoning: item.id.includes("reasoner") || item.id.includes("r1") || item.id.includes("o1") || item.id.includes("o3"),
-              input: item.id.includes("vision") || item.id.includes("4o") ? ["text", "image"] : ["text"],
-              contextWindow: 128000,
-              maxTokens: 16384,
-            });
-            addedCount++;
-          }
-        }
-        providerStore.persist();
-        alert(`成功拉取到 ${data.data.length} 个模型，新挂载 ${addedCount} 个！`);
+      if (json.data && Array.isArray(json.data)) {
+        list = json.data;
+      } else if (Array.isArray(json)) {
+        list = json;
+      } else if (json.models && Array.isArray(json.models)) {
+        list = json.models;
+      }
+
+      if (list.length > 0) {
+        discoveredRawModels.value = list.filter((item) => item && typeof item.id === "string" && item.id.trim().length > 0);
+        isDiscoveryDialogOpen.value = true;
       } else {
-        alert("未能从返回数据中解析出模型列表。");
+        alert("未能从端点返回的数据中解析出模型列表。请检查返回格式是否包含 data 或 models 字段。");
       }
     } else {
       alert(`获取模型列表失败: HTTP ${res.status} ${res.statusText}`);
@@ -357,15 +393,43 @@ async function discoverRemoteModels() {
   }
 }
 
-function guessFamily(id: string): string {
-  const lower = id.toLowerCase();
-  if (lower.includes("claude")) return "Claude";
-  if (lower.includes("gpt") || lower.includes("o1") || lower.includes("o3") || lower.includes("text-embedding")) return "GPT";
-  if (lower.includes("deepseek")) return "DeepSeek";
-  if (lower.includes("qwen") || lower.includes("qwq")) return "Qwen";
-  if (lower.includes("gemini")) return "Gemini";
-  if (lower.includes("mistral") || lower.includes("codestral")) return "Mistral";
-  if (lower.includes("llama")) return "Llama";
-  return "Other";
+async function handleConfirmAddModels(selectedIds: string[]) {
+  const p = providerStore.activeProvider;
+  if (!p || selectedIds.length === 0) return;
+
+  if (!p.models) p.models = [];
+  const existingIds = new Set(p.models.map((m) => m.id));
+
+  let addedCount = 0;
+  let matchedCount = 0;
+
+  for (const id of selectedIds) {
+    if (!existingIds.has(id)) {
+      const bestPreset = await presetsStore.findBestMatchInProvider(p.id, id);
+      const caps = guessModelCapabilities(id);
+
+      const newModel: ModelSchema = {
+        id,
+        name: id,
+        family: guessModelFamily(id),
+        reasoning: caps.reasoning,
+        input: caps.vision ? ["text", "image"] : ["text"],
+        contextWindow: caps.contextWindow,
+        maxTokens: caps.maxTokens,
+      };
+
+      if (bestPreset) {
+        presetsStore.applyModelPreset(newModel, bestPreset);
+        newModel.id = id; // 保持远端实际拉取的原始 ID
+        matchedCount++;
+      }
+
+      p.models.push(newModel);
+      addedCount++;
+    }
+  }
+
+  providerStore.persist(true);
+  isDiscoveryDialogOpen.value = false;
 }
 </script>

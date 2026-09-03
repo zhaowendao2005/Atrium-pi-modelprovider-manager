@@ -88,11 +88,52 @@ export interface ProviderCompatibilityConfig {
   supportsThinkingTokenBudget?: boolean;
   cacheControlFormat?: "anthropic";
   sendSessionAffinityHeaders?: boolean;
+  sessionAffinityFormat?: "openai" | "openai-nosession" | "openrouter";
+  deferredToolsMode?: "kimi";
+
+  // === 路由与网关筛选 (OpenRouter / Vercel Gateway) ===
+  openRouterRouting?: {
+    order?: string[];
+    only?: string[];
+    ignore?: string[];
+    quantizations?: string[];
+    sort?: {
+      by?: "price" | "throughput" | "latency";
+      partition?: "model";
+    };
+    max_price?: {
+      prompt?: number;
+      completion?: number;
+    };
+    preferred_min_throughput?: {
+      p50?: number;
+      p90?: number;
+    };
+    preferred_max_latency?: {
+      p50?: number;
+      p90?: number;
+      p99?: number;
+    };
+    allow_fallbacks?: boolean;
+    require_parameters?: boolean;
+    data_collection?: "allow" | "deny";
+    zdr?: boolean;
+    enforce_distillable_text?: boolean;
+  };
+  vercelGatewayRouting?: {
+    only?: string[];
+    order?: string[];
+  };
+
+  supportsAdditionalTools?: boolean;
+  supportsToolSearch?: boolean;
+  supportsExplicitPromptCacheMode?: boolean;
 
   // === Anthropic 兼容性 ===
   supportsEagerToolInputStreaming?: boolean;
   supportsLongCacheRetention?: boolean;
   supportsCacheControlOnTools?: boolean;
+  supportsTemperature?: boolean;
   forceAdaptiveThinking?: boolean;
   allowEmptySignature?: boolean;
   supportsStrictTools?: boolean;
@@ -117,6 +158,7 @@ export interface ModelSchema {
   samplingParams?: Record<string, unknown>;
   headers?: Record<string, string>;
   compat?: ProviderCompatibilityConfig;
+  appliedPreset?: string; // 记录套用的预设名称，若修改过则为 'custom'
 }
 
 /**
@@ -129,6 +171,8 @@ export interface ProviderSchema {
   apiKey?: string;
   api?: ApiProtocol;
   authHeader?: boolean;
+  oauth?: "radius" | string;
+  env?: Record<string, string>; // 提供商特定环境变量 (如 CLOUDFLARE_ACCOUNT_ID 等)
   headers?: Record<string, string>;
   models?: ModelSchema[];
   modelOverrides?: Record<string, Partial<ModelSchema>>;
@@ -136,6 +180,7 @@ export interface ProviderSchema {
   autoDiscover?: boolean;
   discoveryEndpoint?: string;
   enabled?: boolean;
+  appliedPreset?: string; // 记录套用的预设名称，若修改过则为 'custom'
   createdAt?: number;
   updatedAt?: number;
 }
@@ -158,4 +203,26 @@ export interface AppConfigYaml {
   version: number;
   settings: AppSettings;
   providers: ProviderSchema[];
+}
+
+/**
+ * 官方预设摘要（Level 0 轻量索引，~2KB）
+ */
+export interface ProviderPresetSummary {
+  id: string;
+  name: string;
+  defaultApi?: ApiProtocol;
+  modelCount: number;
+}
+
+/**
+ * 官方提供商预设详情（Level 1 作用域层）
+ */
+export interface ProviderPresetDetails {
+  id: string;
+  name: string;
+  baseUrl?: string;
+  defaultApi?: ApiProtocol;
+  compat?: ProviderCompatibilityConfig;
+  models: ModelSchema[];
 }

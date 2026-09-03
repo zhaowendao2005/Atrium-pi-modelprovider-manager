@@ -10,7 +10,7 @@
         <span class="text-white tracking-tight">{{ avatarInitial }}</span>
       </div>
 
-      <div class="flex items-baseline gap-2 min-w-0">
+      <div class="flex items-baseline gap-2 min-w-0 flex-wrap">
         <span class="font-medium text-xs text-foreground truncate">
           {{ props.model.name || props.model.id }}
         </span>
@@ -19,6 +19,22 @@
           class="text-[11px] font-mono text-muted-foreground/70 truncate"
         >
           {{ props.model.id }}
+        </span>
+        <!-- Overridden Wire Protocol Badge -->
+        <span
+          v-if="props.model.api"
+          class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+          :title="`覆盖通信协议为: ${props.model.api}`"
+        >
+          {{ props.model.api }}
+        </span>
+        <!-- Custom Base URL Badge -->
+        <span
+          v-if="props.model.baseUrl"
+          class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+          :title="`自定义独立路由: ${props.model.baseUrl}`"
+        >
+          独立端点
         </span>
       </div>
     </div>
@@ -67,6 +83,28 @@
         </svg>
       </div>
 
+      <!-- 4. Sampling Params Indicator (Sliders SVG) -->
+      <div
+        v-if="hasSamplingParams"
+        class="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 cursor-default transition-colors"
+        title="已配置自定义采样参数注入 (samplingParams)"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+      </div>
+
+      <!-- 5. Tiered Cost Indicator (Layers SVG) -->
+      <div
+        v-if="hasCostTiers"
+        class="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 cursor-default transition-colors"
+        :title="`已启用阶梯费率 (${props.model.cost?.tiers?.length} 档阶梯定价)`"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </div>
+
       <!-- 4. Edit Settings (Cog SVG Button) -->
       <button
         type="button"
@@ -112,6 +150,14 @@ const hasVision = computed(() => {
   return props.model.input?.includes("image") ?? false;
 });
 
+const hasSamplingParams = computed(() => {
+  return !!props.model.samplingParams && Object.keys(props.model.samplingParams).length > 0;
+});
+
+const hasCostTiers = computed(() => {
+  return !!props.model.cost?.tiers && props.model.cost.tiers.length > 0;
+});
+
 const avatarInitial = computed(() => {
   const name = props.model.name || props.model.id;
   if (name.toLowerCase().startsWith("claude")) return "C";
@@ -145,8 +191,6 @@ function editModel() {
 }
 
 function deleteModel() {
-  if (confirm(`确定要移除模型 '${props.model.id}' 吗？`)) {
-    providerStore.deleteModel(props.providerId, props.model.id);
-  }
+  providerStore.deleteModel(props.providerId, props.model.id);
 }
 </script>
