@@ -405,7 +405,7 @@ async function handleConfirmAddModels(selectedIds: string[]) {
 
   for (const id of selectedIds) {
     if (!existingIds.has(id)) {
-      const bestPreset = await presetsStore.findBestMatchInProvider(p.id, id);
+      const bestPreset = await presetsStore.findGlobalBestMatchModel(id, p.id);
       const caps = guessModelCapabilities(id);
 
       const newModel: ModelSchema = {

@@ -44,9 +44,6 @@ importers:
       vue:
         specifier: ^3.5.13
         version: 3.5.42(typescript@5.9.3)
-      yaml:
-        specifier: ^2.7.0
-        version: 2.9.0
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^2.11.4

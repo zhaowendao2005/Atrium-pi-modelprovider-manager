@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { ProviderSchema, ModelSchema, ProviderPresetSummary, ProviderPresetDetails } from "../types/index.js";
-import { INITIAL_CONFIG } from "./storage.js";
 
 /**
  * 检查当前是否运行在 Tauri 桌面端环境
@@ -20,10 +19,40 @@ export async function dbLoadAllProviders(): Promise<ProviderSchema[]> {
         return res.providers;
       }
     } catch (err) {
-      console.warn("[sqlite-storage] Failed to load from SQLite, will try initial fallback:", err);
+      console.error("[sqlite-storage] Failed to load from SQLite:", err);
     }
   }
-  return [];
+  throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
+}
+
+export async function dbLoadSettings(): Promise<Record<string, unknown>> {
+  if (!isTauriEnvironment()) throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
+  return (await invoke("app_meta_load")) as Record<string, unknown>;
+}
+
+export async function dbSaveSettings(settings: Record<string, unknown>): Promise<void> {
+  if (!isTauriEnvironment()) throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
+  await invoke("app_meta_save", { settings });
+}
+
+export async function dbGetPath(): Promise<string> {
+  if (!isTauriEnvironment()) throw new Error("Tauri runtime is unavailable");
+  return (await invoke("db_get_path")) as string;
+}
+
+export async function dbGetStats(): Promise<{ providers: number; models: number }> {
+  if (!isTauriEnvironment()) throw new Error("Tauri runtime is unavailable");
+  return (await invoke("db_get_stats")) as { providers: number; models: number };
+}
+
+export async function dbBackup(): Promise<string> {
+  if (!isTauriEnvironment()) throw new Error("Tauri runtime is unavailable");
+  return (await invoke("db_backup")) as string;
+}
+
+export async function dbExportJson(): Promise<string> {
+  if (!isTauriEnvironment()) throw new Error("Tauri runtime is unavailable");
+  return (await invoke("db_export_json")) as string;
 }
 
 /**
@@ -39,6 +68,7 @@ export async function dbSaveProvider(provider: ProviderSchema): Promise<void> {
       throw err;
     }
   }
+  throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
 }
 
 /**
@@ -54,6 +84,7 @@ export async function dbSaveModel(providerId: string, model: ModelSchema): Promi
       throw err;
     }
   }
+  throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
 }
 
 /**
@@ -69,6 +100,7 @@ export async function dbDeleteProvider(id: string): Promise<void> {
       throw err;
     }
   }
+  throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
 }
 
 /**
@@ -84,6 +116,7 @@ export async function dbDeleteModel(providerId: string, modelId: string): Promis
       throw err;
     }
   }
+  throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
 }
 
 /**

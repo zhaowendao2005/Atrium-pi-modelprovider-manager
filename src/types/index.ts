@@ -159,6 +159,7 @@ export interface ModelSchema {
   headers?: Record<string, string>;
   compat?: ProviderCompatibilityConfig;
   appliedPreset?: string; // 记录套用的预设名称，若修改过则为 'custom'
+  sortOrder?: number;
 }
 
 /**
@@ -193,16 +194,6 @@ export interface AppSettings {
   enableHeaderTrace: boolean;
   enableAutoOverflowRecovery: boolean;
   activeProviderId?: string;
-  configStoragePath?: string;
-}
-
-/**
- * 持久化 YAML 根结构
- */
-export interface AppConfigYaml {
-  version: number;
-  settings: AppSettings;
-  providers: ProviderSchema[];
 }
 
 /**

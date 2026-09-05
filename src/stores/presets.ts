@@ -98,6 +98,48 @@ export const usePresetsStore = defineStore("presets", () => {
   }
 
   /**
+   * 全局跨提供商智能模糊相似度匹配：即使当前提供商是自定义中转商/代理，也能自动匹配出官方模型预设
+   */
+  async function findGlobalBestMatchModel(modelId: string, preferredProviderId?: string): Promise<ModelSchema | null> {
+    if (!modelId || !modelId.trim()) return null;
+
+    // 1. 如果有首选提供商且能匹配到，优先匹配首选
+    if (preferredProviderId) {
+      const preferredMatch = await findBestMatchInProvider(preferredProviderId, modelId);
+      if (preferredMatch) return preferredMatch;
+    }
+
+    // 2. 否则确保索引已加载
+    await loadIndex();
+    if (providerIndex.value.length === 0) return null;
+
+    // 3. 检查常见的模型名前缀以直接缩小范围 (如 claude -> anthropic, gpt/o1/o3/o4 -> openai, gemini/gemma -> google, deepseek -> deepseek, qwen -> qwen-token-plan)
+    const lower = modelId.toLowerCase();
+    const candidateProviderIds: string[] = [];
+    if (lower.includes("claude")) candidateProviderIds.push("anthropic", "amazon-bedrock", "google-vertex", "openrouter");
+    if (lower.includes("gpt") || lower.startsWith("o1") || lower.startsWith("o3") || lower.startsWith("o4")) candidateProviderIds.push("openai", "azure-openai-responses", "openrouter");
+    if (lower.includes("gemini") || lower.includes("gemma")) candidateProviderIds.push("google", "google-vertex", "openrouter");
+    if (lower.includes("deepseek")) candidateProviderIds.push("deepseek", "together", "fireworks", "openrouter");
+    if (lower.includes("qwen")) candidateProviderIds.push("qwen-token-plan", "together", "openrouter");
+
+    for (const pid of candidateProviderIds) {
+      const match = await findBestMatchInProvider(pid, modelId);
+      if (match) return match;
+    }
+
+    // 4. 若仍未匹配，在所有已知官方提供商的已缓存或前 5 个主要厂商中匹配
+    const priorityProviders = ["openai", "anthropic", "google", "deepseek", "openrouter", "mistral", "xai"];
+    for (const pid of priorityProviders) {
+      if (!candidateProviderIds.includes(pid)) {
+        const match = await findBestMatchInProvider(pid, modelId);
+        if (match) return match;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * 宏操作：将提供商预设参数批量覆盖填充到目标 Provider 中
    */
   function applyProviderPreset(target: ProviderSchema, preset: ProviderPresetDetails): void {
@@ -111,10 +153,22 @@ export const usePresetsStore = defineStore("presets", () => {
 
   /**
    * 宏操作：将模型预设参数批量填充到目标 Model 中（全字段解封、完全可编辑）
+   * 遵循规范：切换模版绝不影响唯一标识 (id) 与用户已填写的显示名称 (name)
    */
-  function applyModelPreset(target: ModelSchema, presetModel: ModelSchema): void {
+  function applyModelPreset(
+    target: ModelSchema,
+    presetModel: ModelSchema,
+    options: { preserveIdentityAndName?: boolean } = { preserveIdentityAndName: true }
+  ): void {
     if (!target || !presetModel) return;
-    if (presetModel.name) target.name = presetModel.name;
+
+    // 绝不覆盖唯一标识 id；仅在 target.name 原本未填写且未强制保护时才补充 name
+    if (!options.preserveIdentityAndName) {
+      if (presetModel.name) target.name = presetModel.name;
+    } else if (!target.name && presetModel.name) {
+      target.name = presetModel.name;
+    }
+
     if (presetModel.family) target.family = presetModel.family;
     if (presetModel.reasoning !== undefined) target.reasoning = presetModel.reasoning;
     if (presetModel.input) target.input = [...presetModel.input];
@@ -141,6 +195,7 @@ export const usePresetsStore = defineStore("presets", () => {
     loadIndex,
     getProviderPreset,
     findBestMatchInProvider,
+    findGlobalBestMatchModel,
     applyProviderPreset,
     applyModelPreset,
   };

@@ -24,6 +24,7 @@ pub fn init_sqlite_db(conn: &Connection) -> Result<(), rusqlite::Error> {
             env_json TEXT,
             headers_json TEXT,
             compat_json TEXT,
+            model_overrides_json TEXT,
             applied_preset TEXT,
             sort_order INTEGER DEFAULT 0,
             created_at INTEGER NOT NULL,
@@ -47,6 +48,7 @@ pub fn init_sqlite_db(conn: &Connection) -> Result<(), rusqlite::Error> {
             headers_json TEXT,
             compat_json TEXT,
             applied_preset TEXT,
+            sort_order INTEGER DEFAULT 0,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
             PRIMARY KEY (provider_id, id),
@@ -81,7 +83,7 @@ pub fn db_load_all(state: tauri::State<DbState>) -> Result<serde_json::Value, St
     let mut stmt = conn
         .prepare(
             "SELECT id, name, base_url, api_key, api, auth_header, enabled, auto_discover,
-                    discovery_endpoint, oauth, env_json, headers_json, compat_json,
+                    discovery_endpoint, oauth, env_json, headers_json, compat_json, model_overrides_json,
                     applied_preset, sort_order, created_at, updated_at
              FROM providers ORDER BY sort_order ASC, created_at ASC",
         )
@@ -106,10 +108,12 @@ pub fn db_load_all(state: tauri::State<DbState>) -> Result<serde_json::Value, St
                     .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
                 "compat": row.get::<_, Option<String>>(12)?
                     .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-                "appliedPreset": row.get::<_, Option<String>>(13)?,
-                "sortOrder": row.get::<_, Option<i32>>(14)?,
-                "createdAt": row.get::<_, Option<i64>>(15)?,
-                "updatedAt": row.get::<_, Option<i64>>(16)?,
+                "modelOverrides": row.get::<_, Option<String>>(13)?
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+                "appliedPreset": row.get::<_, Option<String>>(14)?,
+                "sortOrder": row.get::<_, Option<i32>>(15)?,
+                "createdAt": row.get::<_, Option<i64>>(16)?,
+                "updatedAt": row.get::<_, Option<i64>>(17)?,
                 "models": []
             }))
         })
@@ -128,7 +132,7 @@ pub fn db_load_all(state: tauri::State<DbState>) -> Result<serde_json::Value, St
             "SELECT id, provider_id, name, family, api, base_url, reasoning, input_json,
                     context_window, max_tokens, cost_json, thinking_level_map_json,
                     sampling_params_json, headers_json, compat_json, applied_preset,
-                    created_at, updated_at
+                    sort_order, created_at, updated_at
              FROM models",
         )
         .map_err(|e| e.to_string())?;
@@ -159,8 +163,9 @@ pub fn db_load_all(state: tauri::State<DbState>) -> Result<serde_json::Value, St
                 "compat": row.get::<_, Option<String>>(14)?
                     .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
                 "appliedPreset": row.get::<_, Option<String>>(15)?,
-                "createdAt": row.get::<_, Option<i64>>(16)?,
-                "updatedAt": row.get::<_, Option<i64>>(17)?,
+                "sortOrder": row.get::<_, Option<i32>>(16)?,
+                "createdAt": row.get::<_, Option<i64>>(17)?,
+                "updatedAt": row.get::<_, Option<i64>>(18)?,
             });
             Ok((pid, model))
         })
@@ -182,6 +187,7 @@ pub fn db_load_all(state: tauri::State<DbState>) -> Result<serde_json::Value, St
 #[tauri::command]
 pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Value) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
 
     let id = provider["id"].as_str().ok_or("Missing provider id")?;
     let name = provider["name"].as_str().unwrap_or(id);
@@ -196,14 +202,15 @@ pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Valu
     let env_json = provider["env"].as_object().map(|o| serde_json::to_string(o).unwrap());
     let headers_json = provider["headers"].as_object().map(|o| serde_json::to_string(o).unwrap());
     let compat_json = provider["compat"].as_object().map(|o| serde_json::to_string(o).unwrap());
+    let model_overrides_json = provider.get("modelOverrides").map(|v| serde_json::to_string(v).unwrap());
     let applied_preset = provider["appliedPreset"].as_str();
     let now = chrono_now_ms();
 
-    conn.execute(
+    tx.execute(
         "INSERT INTO providers (id, name, base_url, api_key, api, auth_header, enabled, auto_discover,
-                                discovery_endpoint, oauth, env_json, headers_json, compat_json,
+                                discovery_endpoint, oauth, env_json, headers_json, compat_json, model_overrides_json,
                                 applied_preset, updated_at, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, COALESCE((SELECT created_at FROM providers WHERE id = ?1), ?15))
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, COALESCE((SELECT created_at FROM providers WHERE id = ?1), ?16))
          ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             base_url = excluded.base_url,
@@ -217,11 +224,12 @@ pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Valu
             env_json = excluded.env_json,
             headers_json = excluded.headers_json,
             compat_json = excluded.compat_json,
+            model_overrides_json = excluded.model_overrides_json,
             applied_preset = excluded.applied_preset,
             updated_at = excluded.updated_at",
         params![
             id, name, base_url, api_key, api, auth_header, enabled, auto_discover,
-            discovery_endpoint, oauth, env_json, headers_json, compat_json,
+            discovery_endpoint, oauth, env_json, headers_json, compat_json, model_overrides_json,
             applied_preset, now
         ],
     ).map_err(|e| e.to_string())?;
@@ -235,11 +243,11 @@ pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Valu
                 continue;
             }
             model_ids.push(mid.to_string());
-            save_single_model_internal(&conn, id, m, now)?;
+            save_single_model_internal(&tx, id, m, now)?;
         }
 
         if model_ids.is_empty() {
-            conn.execute("DELETE FROM models WHERE provider_id = ?1", params![id])
+            tx.execute("DELETE FROM models WHERE provider_id = ?1", params![id])
                 .map_err(|e| e.to_string())?;
         } else {
             let placeholders = (0..model_ids.len())
@@ -255,19 +263,21 @@ pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Valu
             for mid in &model_ids {
                 params_vec.push(mid);
             }
-            conn.execute(&sql, rusqlite::params_from_iter(params_vec))
+            tx.execute(&sql, rusqlite::params_from_iter(params_vec))
                 .map_err(|e| e.to_string())?;
         }
     }
 
-    Ok(())
+    tx.commit().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn db_save_model(state: tauri::State<DbState>, provider_id: String, model: serde_json::Value) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let now = chrono_now_ms();
-    save_single_model_internal(&conn, &provider_id, &model, now)
+    save_single_model_internal(&tx, &provider_id, &model, now)?;
+    tx.commit().map_err(|e| e.to_string())
 }
 
 pub fn save_single_model_internal(
@@ -291,13 +301,14 @@ pub fn save_single_model_internal(
     let headers_json = model.get("headers").map(|v| serde_json::to_string(v).unwrap());
     let compat_json = model.get("compat").map(|v| serde_json::to_string(v).unwrap());
     let applied_preset = model["appliedPreset"].as_str();
+    let sort_order = model["sortOrder"].as_i64().unwrap_or(0);
 
     conn.execute(
         "INSERT INTO models (id, provider_id, name, family, api, base_url, reasoning,
                              input_json, context_window, max_tokens, cost_json,
                              thinking_level_map_json, sampling_params_json, headers_json,
-                             compat_json, applied_preset, updated_at, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, COALESCE((SELECT created_at FROM models WHERE provider_id = ?2 AND id = ?1), ?17))
+                             compat_json, applied_preset, sort_order, updated_at, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, COALESCE((SELECT created_at FROM models WHERE provider_id = ?2 AND id = ?1), ?18))
          ON CONFLICT(provider_id, id) DO UPDATE SET
             name = excluded.name,
             family = excluded.family,
@@ -313,12 +324,13 @@ pub fn save_single_model_internal(
             headers_json = excluded.headers_json,
             compat_json = excluded.compat_json,
             applied_preset = excluded.applied_preset,
+            sort_order = excluded.sort_order,
             updated_at = excluded.updated_at",
         params![
             mid, provider_id, name, family, api, base_url, reasoning,
             input_json, context_window, max_tokens, cost_json,
             thinking_level_map_json, sampling_params_json, headers_json,
-            compat_json, applied_preset, now
+            compat_json, applied_preset, sort_order, now
         ],
     ).map_err(|e| e.to_string())?;
 
@@ -339,6 +351,64 @@ pub fn db_delete_model(state: tauri::State<DbState>, provider_id: String, model_
     conn.execute("DELETE FROM models WHERE provider_id = ?1 AND id = ?2", params![provider_id, model_id])
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn app_meta_load(state: tauri::State<DbState>) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT key, value FROM app_meta").map_err(|e| e.to_string())?;
+    let mut result = serde_json::Map::new();
+    let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))).map_err(|e| e.to_string())?;
+    for row in rows {
+        let (key, value) = row.map_err(|e| e.to_string())?;
+        result.insert(key, serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value)));
+    }
+    Ok(serde_json::Value::Object(result))
+}
+
+#[tauri::command]
+pub fn app_meta_save(state: tauri::State<DbState>, settings: serde_json::Value) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let object = settings.as_object().ok_or("settings must be an object")?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    for (key, value) in object { tx.execute("INSERT INTO app_meta (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value", params![key, serde_json::to_string(value).map_err(|e| e.to_string())?]).map_err(|e| e.to_string())?; }
+    tx.commit().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn db_get_health(state: tauri::State<DbState>) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let integrity: String = conn.query_row("PRAGMA integrity_check", [], |row| row.get(0)).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": integrity == "ok", "integrity": integrity}))
+}
+
+#[tauri::command]
+pub fn db_export_json(state: tauri::State<DbState>) -> Result<String, String> {
+    let data = db_load_all(state)?;
+    let target = crate::service::config::get_storage_dir()?.join(format!("manager.export.{}.json", chrono_now_ms()));
+    let mut exported = data;
+    if let Some(providers) = exported.get_mut("providers").and_then(|value| value.as_array_mut()) {
+        for provider in providers { if let Some(object) = provider.as_object_mut() { object.remove("apiKey"); } }
+    }
+    std::fs::write(&target, serde_json::to_vec_pretty(&exported).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    Ok(target.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn db_backup(state: tauri::State<DbState>) -> Result<String, String> {
+    let _guard = state.conn.lock().map_err(|e| e.to_string())?;
+    let source = crate::service::config::get_storage_dir()?.join("manager.db");
+    let target = crate::service::config::get_storage_dir()?.join(format!("manager.backup.{}.db", chrono_now_ms()));
+    std::fs::copy(&source, &target).map_err(|e| e.to_string())?;
+    Ok(target.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn db_get_stats(state: tauri::State<DbState>) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let providers: i64 = conn.query_row("SELECT COUNT(*) FROM providers", [], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let models: i64 = conn.query_row("SELECT COUNT(*) FROM models", [], |row| row.get(0)).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"providers": providers, "models": models}))
 }
 
 pub fn chrono_now_ms() -> i64 {

@@ -34,9 +34,13 @@ const providerStore = useProviderStore();
 const settingsStore = useSettingsStore();
 const presetsStore = usePresetsStore();
 
-onMounted(() => {
-  providerStore.init();
-  settingsStore.init();
-  presetsStore.loadIndex();
+onMounted(async () => {
+  try {
+    await settingsStore.init();
+    await providerStore.init();
+    await presetsStore.loadIndex();
+  } catch (err) {
+    console.error("[MainLayout] SQLite initialization failed:", err);
+  }
 });
 </script>

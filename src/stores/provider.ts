@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import type { ProviderSchema, ModelSchema } from "../types/index.js";
-import { loadConfigFromYaml, saveConfigToYaml } from "../utils/storage.js";
-import { dbLoadAllProviders, dbSaveProvider, dbSaveModel, dbDeleteProvider, dbDeleteModel } from "../utils/sqlite-storage.js";
+import { dbLoadAllProviders, dbSaveProvider, dbSaveModel, dbDeleteProvider, dbDeleteModel, dbSaveSettings } from "../utils/sqlite-storage.js";
 import { useSettingsStore } from "./settings.js";
 import { safeFetch } from "../utils/http.js";
 
@@ -92,16 +91,14 @@ export const useProviderStore = defineStore("provider", {
         this.activeProviderId =
           settingsStore.settings.activeProviderId || this.providers[0]?.id || "";
       } catch (err) {
-        console.warn("[providerStore] SQLite load failed, fallback to YAML:", err);
-        const config = loadConfigFromYaml();
-        this.providers = config.providers;
-        this.activeProviderId =
-          config.settings.activeProviderId || this.providers[0]?.id || "";
+        console.error("[providerStore] SQLite load failed:", err);
+        this.providers = [];
+        throw err;
       }
     },
 
     /**
-     * 智能防抖无感自动保存：自动同步到 SQLite 并镜像持久化至 YAML
+     * 智能防抖自动保存到 SQLite。
      */
     persist(immediate = false) {
       if (this.saveTimer) {
@@ -115,20 +112,9 @@ export const useProviderStore = defineStore("provider", {
         try {
           const settingsStore = useSettingsStore();
 
-          // 1. 镜像保存到 YAML (保证扩展运行时兼容)
-          saveConfigToYaml({
-            version: 1,
-            settings: {
-              ...settingsStore.settings,
-              activeProviderId: this.activeProviderId,
-            },
-            providers: this.providers,
-          });
-
-          // 2. 持久化至当前活动 Provider 的 SQLite 表
-          if (this.activeProvider) {
-            await dbSaveProvider(JSON.parse(JSON.stringify(this.activeProvider)));
-          }
+          // Persist the active provider and active selection to SQLite.
+          if (this.activeProvider) await dbSaveProvider(JSON.parse(JSON.stringify(this.activeProvider)));
+          await dbSaveSettings({ ...settingsStore.settings, activeProviderId: this.activeProviderId });
 
           this.autoSaveStatus = "saved";
           setTimeout(() => {
@@ -137,7 +123,7 @@ export const useProviderStore = defineStore("provider", {
             }
           }, 2000);
         } catch (e) {
-          console.error("[providerStore] Auto-save error:", e);
+          console.error("[providerStore] SQLite auto-save error:", e);
           this.autoSaveStatus = "error";
         }
       };

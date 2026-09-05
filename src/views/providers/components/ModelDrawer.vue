@@ -6,7 +6,7 @@
     @update:model-value="val => { if (!val) drawerStore.closeDrawer() }"
   >
     <div v-if="drawerStore.editingModel" class="flex flex-col gap-5 text-sm">
-      <!-- Top Preset Bar (当前提供商专属模型预设宏选择与状态提示) -->
+      <!-- Top Preset Bar (官方模型预设二级上下文菜单选择器：支持搜索提供商与模型解耦套用) -->
       <div class="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-primary/5 to-transparent border border-purple-500/20 flex flex-col gap-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5 font-semibold text-xs text-foreground">
@@ -14,7 +14,7 @@
             <svg class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span>模型预设模版 (当前提供商作用域)</span>
+            <span>模型预设模版 (二级上下文检索与跨厂商套用)</span>
           </div>
 
           <!-- Status Indicator -->
@@ -49,11 +49,11 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <Select
-            :model-value="selectedModelPresetId"
-            :options="modelPresetOptions"
-            @update:model-value="onApplyModelPresetChange"
+        <div class="w-full">
+          <ModelPresetCascadeSelect
+            :parent-provider-id="drawerStore.targetProviderId || undefined"
+            :applied-preset-id="drawerStore.editingModel.appliedPreset"
+            @select="onApplyModelPresetSelected"
           />
         </div>
       </div>
@@ -690,6 +690,7 @@ import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
+import ModelPresetCascadeSelect from "../../../components/ui/ModelPresetCascadeSelect.vue";
 
 const drawerStore = useDrawerStore();
 const providerStore = useProviderStore();
@@ -703,52 +704,16 @@ const showModelCompat = ref(false);
 
 const suggestedPresetModel = ref<ModelSchema | null>(null);
 
-const currentProviderPresets = computed(() => {
-  const pid = drawerStore.targetProviderId;
-  if (!pid) return null;
-  return presetsStore.providerCache.get(pid.toLowerCase()) || null;
-});
-
-// 当抽屉打开时，按需懒加载当前 Provider 作用域内的模型预设
-watch(
-  () => drawerStore.targetProviderId,
-  (newPid) => {
-    if (newPid) {
-      presetsStore.getProviderPreset(newPid);
-    }
-  },
-  { immediate: true }
-);
-
-const modelPresetOptions = computed<SelectOption[]>(() => {
-  const options: SelectOption[] = [{ label: "从当前提供商预设库选择套用...", value: "" }];
-  const details = currentProviderPresets.value;
-  if (details && details.models) {
-    for (const m of details.models) {
-      options.push({
-        label: `${m.name || m.id} (${(m.contextWindow || 128000) / 1000}K)`,
-        value: m.id,
-      });
-    }
-  }
-  return options;
-});
-
-const selectedModelPresetId = computed(() => {
-  return drawerStore.editingModel?.appliedPreset === "custom"
-    ? ""
-    : (drawerStore.editingModel?.appliedPreset || "");
-});
-
 async function onModelIdInput() {
   onFieldModified();
   const mid = drawerStore.editingModel?.id;
   const pid = drawerStore.targetProviderId;
-  if (!mid || !pid || mid.length < 2) {
+  if (!mid || mid.length < 2) {
     suggestedPresetModel.value = null;
     return;
   }
-  const match = await presetsStore.findBestMatchInProvider(pid, mid);
+  // 全局跨提供商智能模糊相近匹配（优先匹配当前提供商，若当前为代理/自定义中转商则在主流官方厂商中匹配）
+  const match = await presetsStore.findGlobalBestMatchModel(mid, pid || undefined);
   if (match && match.id !== mid) {
     suggestedPresetModel.value = match;
   } else {
@@ -763,15 +728,11 @@ function applySuggestedPreset() {
   handleAutoSave();
 }
 
-async function onApplyModelPresetChange(modelId: string) {
-  if (!modelId || !drawerStore.editingModel || !drawerStore.targetProviderId) return;
-  const details = await presetsStore.getProviderPreset(drawerStore.targetProviderId);
-  const found = details?.models.find((m) => m.id === modelId);
-  if (found) {
-    presetsStore.applyModelPreset(drawerStore.editingModel, found);
-    suggestedPresetModel.value = null;
-    handleAutoSave();
-  }
+function onApplyModelPresetSelected(model: ModelSchema) {
+  if (!drawerStore.editingModel) return;
+  presetsStore.applyModelPreset(drawerStore.editingModel, model);
+  suggestedPresetModel.value = null;
+  handleAutoSave();
 }
 
 function onFieldModified() {

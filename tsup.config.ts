@@ -1,11 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/adapters/grok-core.ts"],
   format: ["esm"],
   dts: true,
   sourcemap: true,
   clean: false,
+  splitting: false,
   outDir: "dist",
   target: "es2022",
   external: [
@@ -14,5 +15,6 @@ export default defineConfig({
     "@earendil-works/pi-tui",
     "@sinclair/typebox",
     "typebox",
+    "node:sqlite",
   ],
 });

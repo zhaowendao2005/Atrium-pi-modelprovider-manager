@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { invoke } from "@tauri-apps/api/core";
+import { resolveAdapterPolicy } from "../adapters/factory.js";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ExecutionState,
@@ -599,8 +600,20 @@ export const useTestingStore = defineStore("testing", {
           break;
         }
 
+        case "runner_error": {
+          console.error("[Pi Agent Runner Error]", event.text);
+          this.executionState = "error";
+          this.activeTask.status = "failed";
+          const lastMessage = this.messages[this.messages.length - 1];
+          if (lastMessage?.role === "assistant") {
+            lastMessage.content = `[执行异常]: ${event.text}`;
+            lastMessage.isStreaming = false;
+          }
+          if (this.metricsTimer) { clearInterval(this.metricsTimer); this.metricsTimer = null; }
+          break;
+        }
+
         case "stderr_log": {
-          // 调试警告信息，不干扰正文流
           console.warn("[Pi Agent Stderr]", event.text);
           break;
         }
@@ -625,12 +638,19 @@ export const useTestingStore = defineStore("testing", {
       const modelTarget = this.currentModelDisplay;
       const providerStore = useProviderStore();
       const targetProvider = providerStore.providers.find((p) => p.id === modelTarget.providerId);
+      const targetModel = targetProvider?.models?.find((m) => m.id === modelTarget.modelId);
+      const adapterPolicy = targetProvider && targetModel ? resolveAdapterPolicy(targetProvider, targetModel) : undefined;
       const modelConfig = {
         id: modelTarget.modelId,
         providerId: modelTarget.providerId,
         apiKey: targetProvider?.apiKey || "",
-        baseUrl: targetProvider?.baseUrl || "",
-        api: targetProvider?.api || "openai-completions",
+        baseUrl: targetModel?.baseUrl || targetProvider?.baseUrl || "",
+        api: targetModel?.api || targetProvider?.api || "openai-completions",
+        headers: targetProvider?.headers || {},
+        compat: targetProvider?.compat || {},
+        appliedPreset: targetModel?.appliedPreset || "",
+        providerAppliedPreset: targetProvider?.appliedPreset || "",
+        adapterId: adapterPolicy?.adapterId || "",
         models: targetProvider?.models || [],
       };
 

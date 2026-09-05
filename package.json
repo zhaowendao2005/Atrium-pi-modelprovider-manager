@@ -11,7 +11,7 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "node scripts/generate-presets.mjs && tauri dev",
+    "dev": "node scripts/generate-presets.mjs && pnpm build:ext && tauri dev",
     "dev:ui": "vite",
     "generate:presets": "node scripts/generate-presets.mjs",
     "clean": "rimraf dist",
@@ -51,8 +51,7 @@
     "pinia": "^2.3.1",
     "tailwind-merge": "^3.0.1",
     "typebox": "^1.3.25",
-    "vue": "^3.5.13",
-    "yaml": "^2.7.0"
+    "vue": "^3.5.13"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

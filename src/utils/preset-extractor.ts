@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { pathToFileURL } from "node:url";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
-import type { ProviderPresetSummary, ProviderPresetDetails } from "../types/index.js";
+import type { ModelSchema, ProviderPresetSummary, ProviderPresetDetails } from "../types/index.js";
 
 export interface SyncPresetsResult {
   updated: boolean;
@@ -91,19 +91,21 @@ export async function syncPresetsAndSchemas(targetDir?: string, force = false): 
   const indexPath = path.join(presetsDir, "index.json");
 
   // 1. 读取生产包版本
-  let currentVersion = "0.84.4";
+  let currentVersion = "0.84.4-grok-adapter-2";
   try {
     const pkgPath = path.resolve(process.cwd(), "node_modules/@earendil-works/pi-coding-agent/package.json");
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-      if (pkg.version) currentVersion = pkg.version;
+      if (pkg.version) currentVersion = `${pkg.version}-grok-adapter-2`;
     }
   } catch (e) {
     console.warn("[preset-extractor] Could not resolve package.json version, using fallback:", e);
   }
 
   // 2. 检查是否需要更新
-  let needUpdate = force;
+  // The catalog includes project-owned Grok entries, so never skip regeneration based
+  // only on the upstream Pi version cache.
+  let needUpdate = true;
   let cachedModelCount = 0;
   if (!force && fs.existsSync(metaPath) && fs.existsSync(schemasPath) && fs.existsSync(indexPath)) {
     try {
@@ -204,6 +206,31 @@ export async function syncPresetsAndSchemas(targetDir?: string, force = false): 
     });
   }
 
+  // Grok's relay presets are maintained by this project because the Pi catalog is
+  // not guaranteed to contain the full xAI/Grok Build catalog.
+  const grokSpecs: Array<[string, string, boolean, number, number, ("text" | "image")[]]> = [
+    ["grok-4.6", "Grok 4.6", true, 500000, 131072, ["text", "image"]],
+    ["grok-composer-2.5-fast", "Composer 2.5", false, 200000, 30000, ["text"]],
+    ["grok-build", "Grok Build", true, 500000, 30000, ["text", "image"]],
+    ["grok-4.5", "Grok 4.5", true, 500000, 131072, ["text", "image"]],
+    ["grok-4.3", "Grok 4.3", true, 1000000, 131072, ["text", "image"]],
+    ["grok-4.20-0309-reasoning", "Grok 4.20 Reasoning", true, 2000000, 131072, ["text", "image"]],
+    ["grok-4.20-0309-non-reasoning", "Grok 4.20 Non-Reasoning", false, 2000000, 131072, ["text", "image"]],
+    ["grok-4.20-multi-agent-0309", "Grok 4.20 Multi-Agent", true, 2000000, 131072, ["text", "image"]],
+  ];
+  const grokModels: ModelSchema[] = grokSpecs.map(([id, name, reasoning, contextWindow, maxTokens, input]) => ({
+    id, name, reasoning, contextWindow, maxTokens, input,
+    api: "openai-responses", appliedPreset: id,
+    cost: { input: 1, output: 2, cacheRead: 0.2, cacheWrite: 0.2 },
+  }));
+  const xai = providerMap.get("xai");
+  if (xai) {
+    const existing = new Set(xai.models.map((model) => model.id));
+    xai.models.push(...grokModels.filter((model) => !existing.has(model.id)));
+  } else {
+    providerMap.set("xai", { id: "xai", name: "xAI", defaultApi: "openai-responses", models: grokModels });
+  }
+
   // 5. 渐进式多文件落盘
   const indexList: ProviderPresetSummary[] = [];
 
@@ -223,6 +250,8 @@ export async function syncPresetsAndSchemas(targetDir?: string, force = false): 
   indexList.sort((a, b) => a.name.localeCompare(b.name));
   fs.writeFileSync(indexPath, JSON.stringify(indexList, null, 2), "utf-8");
 
+  const totalModelCount = Array.from(providerMap.values()).reduce((sum, provider) => sum + provider.models.length, 0);
+
   // 写入版本元数据
   fs.writeFileSync(
     metaPath,
@@ -231,7 +260,7 @@ export async function syncPresetsAndSchemas(targetDir?: string, force = false): 
         version: currentVersion,
         updatedAt: new Date().toISOString(),
         providerCount: indexList.length,
-        modelCount: allModels.length,
+        modelCount: totalModelCount,
       },
       null,
       2
@@ -240,13 +269,13 @@ export async function syncPresetsAndSchemas(targetDir?: string, force = false): 
   );
 
   console.log(
-    `[preset-extractor] Sync complete: ${indexList.length} providers, ${allModels.length} models saved.`
+    `[preset-extractor] Sync complete: ${indexList.length} providers, ${totalModelCount} models saved.`
   );
 
   return {
     updated: true,
     version: currentVersion,
     providerCount: indexList.length,
-    modelCount: allModels.length,
+    modelCount: totalModelCount,
   };
 }

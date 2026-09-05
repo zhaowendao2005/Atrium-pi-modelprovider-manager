@@ -6,10 +6,10 @@ mod service;
 use rusqlite::Connection;
 use std::sync::Mutex;
 
-use service::config::{get_config_path, get_storage_dir, read_yaml_config, write_yaml_config};
+use service::config::{db_get_path, get_storage_dir};
 use service::db::{
-    db_delete_model, db_delete_provider, db_load_all, db_save_model, db_save_provider,
-    init_sqlite_db, DbState,
+    app_meta_load, app_meta_save, db_backup, db_delete_model, db_delete_provider, db_export_json,
+    db_get_health, db_get_stats, db_load_all, db_save_model, db_save_provider, init_sqlite_db, DbState,
 };
 use service::preset::{get_preset_index, get_provider_preset};
 use service::test_runner::{
@@ -27,16 +27,20 @@ fn main() {
             conn: Mutex::new(conn),
         })
         .invoke_handler(tauri::generate_handler![
-            // Config & Storage Domain
-            get_config_path,
-            read_yaml_config,
-            write_yaml_config,
+            // Database and storage domain
+            db_get_path,
             // Database Domain
             db_load_all,
             db_save_provider,
             db_save_model,
             db_delete_provider,
             db_delete_model,
+            app_meta_load,
+            app_meta_save,
+            db_backup,
+            db_export_json,
+            db_get_health,
+            db_get_stats,
             // Preset Domain
             get_preset_index,
             get_provider_preset,

@@ -1,26 +1,33 @@
 import { defineStore } from "pinia";
 import type { AppSettings } from "../types/index.js";
-import { loadConfigFromYaml, saveConfigToYaml, INITIAL_CONFIG } from "../utils/storage.js";
-import { useProviderStore } from "./provider.js";
+import { dbLoadSettings, dbSaveSettings } from "../utils/sqlite-storage.js";
+import { INITIAL_SETTINGS } from "../utils/storage.js";
 
 export const useSettingsStore = defineStore("settings", {
   state: () => ({
-    settings: { ...INITIAL_CONFIG.settings } as AppSettings,
+    settings: { ...INITIAL_SETTINGS } as AppSettings,
+    initialized: false,
   }),
 
   actions: {
-    init() {
-      const config = loadConfigFromYaml();
-      this.settings = { ...config.settings };
-      this.applyTheme(this.settings.theme);
+    async init() {
+      try {
+        const stored = await dbLoadSettings();
+        this.settings = { ...INITIAL_SETTINGS, ...stored } as AppSettings;
+      } catch (err) {
+        console.error("[settingsStore] SQLite load failed:", err);
+        this.settings = { ...INITIAL_SETTINGS };
+        throw err;
+      } finally {
+        this.initialized = true;
+        this.applyTheme(this.settings.theme);
+      }
     },
 
     updateSettings(partial: Partial<AppSettings>) {
       this.settings = { ...this.settings, ...partial };
-      if (partial.theme) {
-        this.applyTheme(partial.theme);
-      }
-      this.persist();
+      if (partial.theme) this.applyTheme(partial.theme);
+      void this.persist();
     },
 
     setTheme(theme: "light" | "dark" | "auto") {
@@ -29,27 +36,17 @@ export const useSettingsStore = defineStore("settings", {
 
     applyTheme(theme: "light" | "dark" | "auto") {
       const root = document.documentElement;
-      if (theme === "dark") {
-        root.classList.add("dark");
-      } else if (theme === "light") {
-        root.classList.remove("dark");
-      } else {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (prefersDark) {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      }
+      if (theme === "dark") root.classList.add("dark");
+      else if (theme === "light") root.classList.remove("dark");
+      else root.classList.toggle("dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
     },
 
-    persist() {
-      const providerStore = useProviderStore();
-      saveConfigToYaml({
-        version: 1,
-        settings: this.settings,
-        providers: providerStore.providers,
-      });
+    async persist() {
+      try {
+        await dbSaveSettings(this.settings as unknown as Record<string, unknown>);
+      } catch (err) {
+        console.error("[settingsStore] SQLite save failed:", err);
+      }
     },
   },
 });

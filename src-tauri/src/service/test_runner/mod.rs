@@ -7,6 +7,8 @@ use std::sync::Mutex;
 use std::thread;
 use tauri::Emitter;
 
+const GROK_CORE_MODULE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../dist/adapters/grok-core.js"));
+
 use crate::service::config::get_storage_dir;
 
 // 全局活跃的 RPC 子进程与标准输入写入句柄
@@ -171,8 +173,12 @@ pub fn start_pi_agent_rpc(
         }
 
         let ext_file = ws.join("sandbox_provider.mjs");
+        let core_file = ws.join("grok-core.mjs");
+        fs::write(&core_file, GROK_CORE_MODULE).map_err(|e| e.to_string())?;
+        let adapter_enabled = model_config.get("adapterId").and_then(|v| v.as_str()) == Some("grok-responses-harness");
         let ext_code = format!(
-            r#"export default function(pi) {{
+            r#"import {{ sanitizeGrokPayload }} from './grok-core.mjs';
+export default function(pi) {{
   pi.registerProvider({provider_id:?}, {{
     name: {provider_id:?},
     baseUrl: {base_url:?},
@@ -180,15 +186,26 @@ pub fn start_pi_agent_rpc(
     api: {api_type:?},
     models: {models_json}
   }});
+  if ({adapter_enabled}) {{
+    pi.on('before_provider_request', (event) => {{
+      if (event.payload && typeof event.payload === 'object') sanitizeGrokPayload(event.payload, {model_id:?});
+    }});
+    pi.on('before_provider_headers', (event, ctx) => {{
+      const sid = ctx.sessionManager.getSessionId();
+      if (sid) event.headers['x-grok-conv-id'] = sid;
+    }});
+  }}
 }}
 "#,
             provider_id = provider_id,
             base_url = base_url,
             api_key = api_key,
             api_type = api_type,
+            model_id = model_id,
+            adapter_enabled = adapter_enabled,
             models_json = serde_json::to_string(&models_arr).unwrap_or_else(|_| "[]".into())
         );
-        let _ = fs::write(&ext_file, ext_code);
+        fs::write(&ext_file, ext_code).map_err(|e| e.to_string())?;
         ext_path_str = ext_file.to_string_lossy().to_string();
     }
 
@@ -355,8 +372,13 @@ pub fn start_pi_agent_rpc(
                     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&log_path) {
                         let _ = writeln!(f, "[STDERR] {}", trimmed);
                     }
+                    let event_type = if trimmed.contains("Failed to load extension") || trimmed.contains("Unknown provider") || trimmed.contains("Error:") {
+                        "runner_error"
+                    } else {
+                        "stderr_log"
+                    };
                     let err_event = serde_json::json!({
-                        "type": "stderr_log",
+                        "type": event_type,
                         "text": trimmed,
                     });
                     let _ = app_stderr.emit("pi-rpc-event", err_event.to_string());
