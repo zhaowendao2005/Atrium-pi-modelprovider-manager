@@ -130,6 +130,22 @@ export class PiExtensionRuntime {
       if (ctx.hasUI) ctx.ui.setStatus("provider-mgr", `Providers: ${this.registeredProviders.size}`);
     });
     this.pi.on("before_provider_request", (event: any, ctx: ExtensionContext) => {
+      const model = (ctx as any).model as any;
+      const providerId = model?.provider || event?.provider || "";
+      const modelId = model?.id || event?.model || event?.payload?.model || "";
+      const entry = this.policies.get(`${providerId}\0${modelId}`);
+
+      // 1. Responses reasoning.status 字段剥离适配（解决 A6 等第三方 Responses 中转站报 status 字段校验失败）
+      const omitStatus = entry?.model.compat?.omitResponsesReasoningStatus ?? entry?.provider.compat?.omitResponsesReasoningStatus ?? false;
+      if (omitStatus && event?.payload && Array.isArray(event.payload.input)) {
+        for (const item of event.payload.input) {
+          if (typeof item === "object" && item !== null && item.type === "reasoning" && "status" in item) {
+            delete (item as any).status;
+          }
+        }
+      }
+
+      // 2. 路由到特定 Preset 适配器处理 (如 Grok 适配器)
       const routed = this.contextFor(ctx, event);
       if (routed) routed.adapter.beforeRequest(event.payload, routed.request);
     });

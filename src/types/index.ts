@@ -138,6 +138,12 @@ export interface ProviderCompatibilityConfig {
   allowEmptySignature?: boolean;
   supportsStrictTools?: boolean;
   supportsToolReferences?: boolean;
+
+  /**
+   * Responses 协议中转修复：从上下文重放的 reasoning 块中移除 output-only 字段 'status'
+   * 适用场景：A6 / 万物等第三方 Responses 中转站报 status 字段校验失败
+   */
+  omitResponsesReasoningStatus?: boolean;
 }
 
 /**
@@ -159,6 +165,9 @@ export interface ModelSchema {
   headers?: Record<string, string>;
   compat?: ProviderCompatibilityConfig;
   appliedPreset?: string; // 记录套用的预设名称，若修改过则为 'custom'
+  basePresetId?: string; // 基础预设 ID 来源追溯
+  basePresetName?: string; // 基础预设名称来源追溯
+  isModified?: boolean; // 标记是否在预设基础上做过个性化修改
   sortOrder?: number;
 }
 
@@ -182,6 +191,9 @@ export interface ProviderSchema {
   discoveryEndpoint?: string;
   enabled?: boolean;
   appliedPreset?: string; // 记录套用的预设名称，若修改过则为 'custom'
+  basePresetId?: string; // 基础预设 ID 来源追溯
+  basePresetName?: string; // 基础预设名称来源追溯
+  isModified?: boolean; // 标记是否在预设基础上做过个性化修改
   createdAt?: number;
   updatedAt?: number;
 }

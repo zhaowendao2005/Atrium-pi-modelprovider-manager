@@ -18,20 +18,29 @@
           </div>
 
           <!-- Status Indicator -->
-          <div class="flex items-center gap-1.5 text-[11px]">
+          <div class="flex items-center gap-2 text-[11px]">
+            <!-- Preset Origin Badge -->
             <span
-              v-if="drawerStore.editingModel.appliedPreset && drawerStore.editingModel.appliedPreset !== 'custom'"
-              class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-medium truncate max-w-[160px]"
-              :title="`已套用: ${drawerStore.editingModel.appliedPreset}`"
+              v-if="effectiveConfig?.presetOrigin.hasPreset && !effectiveConfig.presetOrigin.isModified"
+              class="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-medium truncate max-w-[200px]"
+              :title="effectiveConfig.presetOrigin.description"
             >
-              已套用: {{ drawerStore.editingModel.appliedPreset }}
+              {{ effectiveConfig.presetOrigin.badgeText }}
             </span>
             <span
-              v-else-if="drawerStore.editingModel.appliedPreset === 'custom'"
+              v-else-if="effectiveConfig?.presetOrigin.hasPreset && effectiveConfig.presetOrigin.isModified"
+              class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium truncate max-w-[220px]"
+              :title="effectiveConfig.presetOrigin.description"
+            >
+              {{ effectiveConfig.presetOrigin.badgeText }}
+            </span>
+            <span
+              v-else
               class="px-2 py-0.5 rounded-full bg-slate-500/15 text-muted-foreground font-medium"
             >
-              自定义已修改 (Custom)
+              完全自定义配置
             </span>
+
             <span
               v-if="providerStore.autoSaveStatus === 'saving'"
               class="flex items-center gap-1 text-muted-foreground animate-pulse"
@@ -44,7 +53,7 @@
               class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>已自动保存</span>
+              <span>已保存</span>
             </span>
           </div>
         </div>
@@ -66,8 +75,9 @@
 
         <!-- ID with Real-Time Best Match Hint -->
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-foreground">
-            模型 ID (传给上游的 model 字段) <span class="text-destructive">*</span>
+          <label class="text-xs font-medium text-foreground flex items-center">
+            <span>模型 ID (传给上游的 model 字段) <span class="text-destructive">*</span></span>
+            <FieldDocButton field="id" title="模型 ID" />
           </label>
           <Input
             v-model="drawerStore.editingModel.id"
@@ -109,8 +119,9 @@
 
         <!-- Display Name -->
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-foreground">
-            显示名称 (Display Name)
+          <label class="text-xs font-medium text-foreground flex items-center">
+            <span>显示名称 (Display Name)</span>
+            <FieldDocButton field="name" title="显示名称" />
           </label>
           <Input
             v-model="drawerStore.editingModel.name"
@@ -122,8 +133,9 @@
 
         <!-- Family Select -->
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-foreground">
-            模型系列归属 (Family 分组)
+          <label class="text-xs font-medium text-foreground flex items-center">
+            <span>模型系列归属 (Family 分组)</span>
+            <FieldDocButton field="family" title="模型系列" />
           </label>
           <Select
             v-model="drawerStore.editingModel.family"
@@ -142,7 +154,10 @@
         <!-- Vision Modality Switch -->
         <div class="flex items-center justify-between py-1">
           <div>
-            <div class="font-medium text-xs text-foreground">支持图像视觉输入 (Vision / Multimodal)</div>
+            <div class="font-medium text-xs text-foreground flex items-center">
+              <span>支持图像视觉输入 (Vision / Multimodal)</span>
+              <FieldDocButton field="input" title="支持模态" />
+            </div>
             <div class="text-[11px] text-muted-foreground">允许在 Prompt 中附加图片进行视觉理解 (input: ["text", "image"])</div>
           </div>
           <Switch
@@ -154,7 +169,10 @@
         <!-- Reasoning Switch -->
         <div class="flex items-center justify-between py-1">
           <div>
-            <div class="font-medium text-xs text-foreground">支持推理思考 (Reasoning / CoT)</div>
+            <div class="font-medium text-xs text-foreground flex items-center">
+              <span>支持推理思考 (Reasoning / CoT)</span>
+              <FieldDocButton field="reasoning" title="思考能力" />
+            </div>
             <div class="text-[11px] text-muted-foreground">支持思考链输出隔离与深度思考调节</div>
           </div>
           <Switch v-model="drawerStore.editingModel.reasoning" />
@@ -163,8 +181,9 @@
         <!-- Thinking Level Map (7 Levels, available when reasoning is enabled) -->
         <div v-if="drawerStore.editingModel.reasoning" class="flex flex-col gap-2.5 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20">
           <div class="flex items-center justify-between">
-            <div class="font-medium text-xs text-purple-700 dark:text-purple-300">
-              7 档推理思考强度映射 (thinkingLevelMap)
+            <div class="font-medium text-xs text-purple-700 dark:text-purple-300 flex items-center">
+              <span>7 档推理思考强度映射 (thinkingLevelMap)</span>
+              <FieldDocButton field="thinkingLevelMap" title="思考强度映射" />
             </div>
             <button
               type="button"
@@ -231,8 +250,9 @@
         <div class="grid grid-cols-2 gap-3">
           <!-- Context Window -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">
-              上下文窗口 (Context Window)
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>上下文窗口 (Context Window)</span>
+              <FieldDocButton field="contextWindow" title="上下文长度" />
             </label>
             <Input
               v-model="drawerStore.editingModel.contextWindow"
@@ -243,8 +263,9 @@
 
           <!-- Max Output Tokens -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">
-              单次最大输出 (Max Tokens)
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>单次最大输出 (Max Tokens)</span>
+              <FieldDocButton field="maxTokens" title="单次最大输出" />
             </label>
             <Input
               v-model="drawerStore.editingModel.maxTokens"
@@ -258,9 +279,12 @@
       <!-- Cost Section (Base + Tiers) -->
       <div class="flex flex-col gap-3 pt-3 border-t border-border">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            计费费率 ($ / 每百万 Tokens)
-          </h4>
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              计费费率 ($ / 每百万 Tokens)
+            </h4>
+            <FieldDocButton field="cost" title="计费费率" />
+          </div>
           <button
             type="button"
             class="text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -402,7 +426,10 @@
           <!-- Override API Protocol -->
           <div class="flex flex-col gap-1.5">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-foreground">覆盖底层通信协议 (api)</label>
+              <label class="text-xs font-medium text-foreground flex items-center">
+                <span>覆盖底层通信协议 (api)</span>
+                <FieldDocButton field="api" title="通信协议" />
+              </label>
               <button
                 v-if="drawerStore.editingModel.api"
                 type="button"
@@ -421,16 +448,27 @@
 
           <!-- Override Base URL -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">覆盖 Base URL 端点 (baseUrl)</label>
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-foreground flex items-center">
+                <span>覆盖 Base URL 端点 (baseUrl)</span>
+                <FieldDocButton field="baseUrl" title="模型独立 Base URL" />
+              </label>
+              <span v-if="parentProvider?.baseUrl" class="text-[10px] text-muted-foreground truncate max-w-[240px]">
+                继承提供商: {{ parentProvider.baseUrl }}
+              </span>
+            </div>
             <Input
               v-model="drawerStore.editingModel.baseUrl"
-              placeholder="留空则继承提供商 Base URL"
+              :placeholder="`留空则继承提供商 Base URL (${parentProvider?.baseUrl || '未配置'})`"
             />
           </div>
 
           <!-- Override Headers -->
           <div class="flex flex-col gap-1.5 pt-1">
-            <label class="text-xs font-medium text-foreground">模型专属附加 Headers (与全局合并)</label>
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>模型专属附加 Headers (与全局合并)</span>
+              <FieldDocButton field="headers" title="模型独立请求头" />
+            </label>
             <KeyValueEditor
               v-model="drawerStore.editingModel.headers"
               key-placeholder="Header 名称"
@@ -445,9 +483,12 @@
       <!-- Section: Sampling Parameters (samplingParams) -->
       <div class="flex flex-col gap-3 pt-3 border-t border-border">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            采样参数注入 (samplingParams)
-          </h4>
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              采样参数注入 (samplingParams)
+            </h4>
+            <FieldDocButton field="samplingParams" title="采样参数" />
+          </div>
           <button
             type="button"
             class="text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -537,12 +578,57 @@
         </div>
       </div>
 
+      <!-- Section: Adaptation Patches Override -->
+      <div class="flex flex-col gap-3 pt-3 border-t border-border">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              请求修复与中转补丁 (Adaptation Patches)
+            </h4>
+            <FieldDocButton field="adaptationPatchesOverview" title="中转适配补丁全景说明" />
+          </div>
+          <button
+            type="button"
+            class="text-[11px] text-primary hover:underline flex items-center gap-1"
+            @click="showPatches = !showPatches"
+          >
+            <span>{{ showPatches ? '收起补丁选项' : '展开补丁选项' }}</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200"
+              :class="{ 'rotate-180': showPatches }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="showPatches" class="flex flex-col gap-1.5 bg-muted/20 p-3 rounded-xl">
+          <label class="text-xs font-medium text-foreground flex items-center">
+            <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
+            <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
+          </label>
+          <Select
+            size="sm"
+            class="w-full"
+            :model-value="getTriStateMode('omitResponsesReasoningStatus')"
+            :options="triStateSelectOptions"
+            @update:model-value="val => setTriStateMode('omitResponsesReasoningStatus', val)"
+          />
+        </div>
+      </div>
+
       <!-- Section: Model Compat Override -->
       <div class="flex flex-col gap-3 pt-3 border-t border-border">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            模型级兼容性覆盖 (Model Compat)
-          </h4>
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Pi Agent 兼容性覆盖 (Model Compat)
+            </h4>
+            <FieldDocButton field="compatMatrixOverview" title="兼容性适配矩阵全景与补丁机制" />
+          </div>
           <button
             type="button"
             class="text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -563,7 +649,10 @@
 
         <div v-if="showModelCompat" class="flex flex-col gap-3 bg-muted/20 p-3 rounded-xl">
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">独立思考链传递格式 (thinkingFormat)</label>
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>独立思考链传递格式 (thinkingFormat)</span>
+              <FieldDocButton field="thinkingFormat" title="思考链传递格式" />
+            </label>
             <Select
               :model-value="drawerStore.editingModel.compat?.thinkingFormat || ''"
               :options="modelThinkingFormatOptions"
@@ -572,7 +661,10 @@
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">最大 Token 字段覆盖 (maxTokensField)</label>
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>最大 Token 字段覆盖 (maxTokensField)</span>
+              <FieldDocButton field="maxTokensField" title="最大 Token 字段名" />
+            </label>
             <Select
               :model-value="drawerStore.editingModel.compat?.maxTokensField || ''"
               :options="modelMaxTokensFieldOptions"
@@ -581,7 +673,10 @@
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-foreground">思考预算字段 (thinkingTokenBudgetField)</label>
+            <label class="text-xs font-medium text-foreground flex items-center">
+              <span>思考预算字段 (thinkingTokenBudgetField)</span>
+              <FieldDocButton field="thinkingTokenBudgetField" title="思考预算字段" />
+            </label>
             <Select
               :model-value="drawerStore.editingModel.compat?.thinkingTokenBudgetField || ''"
               :options="modelThinkingTokenBudgetOptions"
@@ -596,7 +691,10 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>Developer 角色 (supportsDeveloperRole)</span>
+              <span class="flex items-center">
+                <span>Developer 角色 (supportsDeveloperRole)</span>
+                <FieldDocButton field="supportsDeveloperRole" title="支持 Developer 角色" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -607,7 +705,10 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>Reasoning Effort 传递 (supportsReasoningEffort)</span>
+              <span class="flex items-center">
+                <span>Reasoning Effort 传递 (supportsReasoningEffort)</span>
+                <FieldDocButton field="supportsReasoningEffort" title="Reasoning Effort 传递" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -618,7 +719,10 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>自适应思考 (forceAdaptiveThinking)</span>
+              <span class="flex items-center">
+                <span>自适应思考 (forceAdaptiveThinking)</span>
+                <FieldDocButton field="forceAdaptiveThinking" title="强制自适应思考" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -629,7 +733,10 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>允许空思考签名 (allowEmptySignature)</span>
+              <span class="flex items-center">
+                <span>允许空思考签名 (allowEmptySignature)</span>
+                <FieldDocButton field="allowEmptySignature" title="允许空思考签名" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -641,7 +748,10 @@
 
             <!-- New GPT-5.4 / GPT-5.6 Tri-state Switches -->
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>显式提示词缓存 (supportsExplicitPromptCacheMode)</span>
+              <span class="flex items-center">
+                <span>显式提示词缓存 (supportsExplicitPromptCacheMode)</span>
+                <FieldDocButton field="supportsExplicitPromptCacheMode" title="显式提示词缓存" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -652,7 +762,10 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>扩展附加工具 (supportsAdditionalTools)</span>
+              <span class="flex items-center">
+                <span>扩展附加工具 (supportsAdditionalTools)</span>
+                <FieldDocButton field="supportsAdditionalTools" title="扩展附加工具" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
@@ -663,13 +776,128 @@
             </div>
 
             <div class="flex items-center justify-between py-1 text-xs">
-              <span>内置工具搜索 (supportsToolSearch)</span>
+              <span class="flex items-center">
+                <span>内置工具搜索 (supportsToolSearch)</span>
+                <FieldDocButton field="supportsToolSearch" title="内置工具搜索" />
+              </span>
               <Select
                 size="sm"
                 class="w-32"
                 :model-value="getTriStateMode('supportsToolSearch')"
                 :options="triStateSelectOptions"
                 @update:model-value="val => setTriStateMode('supportsToolSearch', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>工具必须含 Name (requiresToolResultName)</span>
+                <FieldDocButton field="requiresToolResultName" title="工具返回必须附带 Name" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('requiresToolResultName')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('requiresToolResultName', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>工具后跟随 Assistant (requiresAssistantAfterToolResult)</span>
+                <FieldDocButton field="requiresAssistantAfterToolResult" title="工具返回后强制跟随 Assistant 消息" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('requiresAssistantAfterToolResult')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('requiresAssistantAfterToolResult', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>Assistant 含推理字段 (requiresReasoningContentOnAssistantMessages)</span>
+                <FieldDocButton field="requiresReasoningContentOnAssistantMessages" title="Assistant 消息必须包含推理字段" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('requiresReasoningContentOnAssistantMessages')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('requiresReasoningContentOnAssistantMessages', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>思考内容转文本 (requiresThinkingAsText)</span>
+                <FieldDocButton field="requiresThinkingAsText" title="思考内容转为普通文本" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('requiresThinkingAsText')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('requiresThinkingAsText', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>工具即时流式解析 (supportsEagerToolInputStreaming)</span>
+                <FieldDocButton field="supportsEagerToolInputStreaming" title="工具输入即时流式解析" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('supportsEagerToolInputStreaming')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('supportsEagerToolInputStreaming', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>1 小时长缓存 (supportsLongCacheRetention)</span>
+                <FieldDocButton field="supportsLongCacheRetention" title="支持 1 小时长缓存" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('supportsLongCacheRetention')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('supportsLongCacheRetention', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>严格模式 (supportsStrictTools)</span>
+                <FieldDocButton field="supportsStrictTools" title="严格模式" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('supportsStrictTools')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('supportsStrictTools', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1 text-xs">
+              <span class="flex items-center">
+                <span>动态工具延迟引用 (supportsToolReferences)</span>
+                <FieldDocButton field="supportsToolReferences" title="动态工具延迟引用" />
+              </span>
+              <Select
+                size="sm"
+                class="w-32"
+                :model-value="getTriStateMode('supportsToolReferences')"
+                :options="triStateSelectOptions"
+                @update:model-value="val => setTriStateMode('supportsToolReferences', val)"
               />
             </div>
           </div>
@@ -685,12 +913,14 @@ import type { ThinkingLevel, ModelSchema } from "../../../types/index.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import { useProviderStore } from "../../../stores/provider.js";
 import { usePresetsStore } from "../../../stores/presets.js";
+import { resolveEffectiveModelConfig } from "../../../utils/effective-config.js";
 import Sheet from "../../../components/ui/Sheet.vue";
 import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
 import ModelPresetCascadeSelect from "../../../components/ui/ModelPresetCascadeSelect.vue";
+import FieldDocButton from "../../../components/ui/FieldDocButton.vue";
 
 const drawerStore = useDrawerStore();
 const providerStore = useProviderStore();
@@ -700,9 +930,23 @@ const showThinkingMap = ref(false);
 const showCostTiers = ref(false);
 const showOverrides = ref(false);
 const showSamplingParams = ref(false);
+const showPatches = ref(false);
 const showModelCompat = ref(false);
 
 const suggestedPresetModel = ref<ModelSchema | null>(null);
+
+const parentProvider = computed(() => {
+  const pid = drawerStore.targetProviderId;
+  if (!pid) return null;
+  return providerStore.providers.find((p) => p.id === pid) || null;
+});
+
+const effectiveConfig = computed(() => {
+  const m = drawerStore.editingModel;
+  const p = parentProvider.value;
+  if (!m || !p) return null;
+  return resolveEffectiveModelConfig(p, m);
+});
 
 async function onModelIdInput() {
   onFieldModified();
@@ -736,8 +980,11 @@ function onApplyModelPresetSelected(model: ModelSchema) {
 }
 
 function onFieldModified() {
-  if (drawerStore.editingModel && drawerStore.editingModel.appliedPreset) {
-    drawerStore.editingModel.appliedPreset = "custom";
+  if (drawerStore.editingModel) {
+    drawerStore.editingModel.isModified = true;
+    if (drawerStore.editingModel.appliedPreset) {
+      drawerStore.editingModel.appliedPreset = "custom";
+    }
   }
 }
 

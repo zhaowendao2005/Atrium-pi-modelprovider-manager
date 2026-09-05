@@ -10,9 +10,22 @@ export const useDrawerStore = defineStore("drawer", {
     targetProviderId: null as string | null,
     editingProvider: null as ProviderSchema | null,
     editingModel: null as ModelSchema | null,
+    // 二级抽屉：字段详情文档
+    isFieldDocOpen: false as boolean,
+    activeDocField: null as string | null,
   }),
 
   actions: {
+    openFieldDoc(field: string) {
+      this.activeDocField = field;
+      this.isFieldDocOpen = true;
+    },
+
+    closeFieldDoc() {
+      this.isFieldDocOpen = false;
+      this.activeDocField = null;
+    },
+
     openProviderDrawer(type: "provider-add" | "provider-edit", provider?: ProviderSchema) {
       this.drawerType = type;
       if (type === "provider-edit" && provider) {

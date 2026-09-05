@@ -149,6 +149,9 @@ export const usePresetsStore = defineStore("presets", () => {
     if (preset.defaultApi) target.api = preset.defaultApi;
     target.compat = preset.compat ? JSON.parse(JSON.stringify(preset.compat)) : {};
     target.appliedPreset = preset.id;
+    target.basePresetId = preset.id;
+    target.basePresetName = preset.name || preset.id;
+    target.isModified = false;
   }
 
   /**
@@ -185,6 +188,9 @@ export const usePresetsStore = defineStore("presets", () => {
       ? JSON.parse(JSON.stringify(presetModel.compat))
       : undefined;
     target.appliedPreset = presetModel.id;
+    target.basePresetId = presetModel.basePresetId || presetModel.id;
+    target.basePresetName = presetModel.basePresetName || presetModel.name || presetModel.id;
+    target.isModified = false;
   }
 
   return {

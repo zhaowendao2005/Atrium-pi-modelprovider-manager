@@ -10,9 +10,10 @@
       <SettingsView v-else-if="navStore.activeTab === 'settings'" />
     </main>
 
-    <!-- Global Drawers (Provider Drawer & Model Drawer) -->
+    <!-- Global Drawers (Provider Drawer & Model Drawer & Docs Drawer) -->
     <ProviderDrawer />
     <ModelDrawer />
+    <DocsDrawer />
   </div>
 </template>
 
@@ -24,6 +25,7 @@ import TestingView from "../testing/TestingView.vue";
 import SettingsView from "../settings/SettingsView.vue";
 import ProviderDrawer from "../providers/components/ProviderDrawer.vue";
 import ModelDrawer from "../providers/components/ModelDrawer.vue";
+import { DocsDrawer } from "../providers/components/DocsDrawer/index.js";
 import { useNavigationStore } from "../../stores/windows/navigation.js";
 import { useProviderStore } from "../../stores/provider.js";
 import { useSettingsStore } from "../../stores/settings.js";

@@ -3,7 +3,8 @@
     <Transition name="sheet-backdrop">
       <div
         v-if="props.modelValue"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        :style="{ zIndex: props.zIndex }"
         @click="close"
       />
     </Transition>
@@ -11,7 +12,9 @@
     <Transition name="sheet-slide">
       <div
         v-if="props.modelValue"
-        class="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+        class="fixed inset-y-0 right-0 w-full bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+        :class="props.maxWidthClass"
+        :style="{ zIndex: props.zIndex + 1 }"
       >
         <!-- Header -->
         <div class="px-6 py-4 border-b border-border flex items-center justify-between bg-card/50 backdrop-blur-md">
@@ -56,9 +59,14 @@ interface Props {
   modelValue: boolean;
   title: string;
   description?: string;
+  zIndex?: number;
+  maxWidthClass?: string;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  zIndex: 50,
+  maxWidthClass: "max-w-xl",
+});
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;

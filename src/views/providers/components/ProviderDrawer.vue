@@ -257,12 +257,56 @@
         />
       </div>
 
+      <!-- Section: Adaptation Patches -->
+      <div class="flex flex-col gap-3 pt-3 border-t border-border">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              请求修复与中转补丁 (Adaptation Patches)
+            </h4>
+            <FieldDocButton field="adaptationPatchesOverview" title="中转适配补丁全景说明" />
+          </div>
+          <button
+            type="button"
+            class="text-[11px] text-primary hover:underline flex items-center gap-1"
+            @click="showPatches = !showPatches"
+          >
+            <span>{{ showPatches ? '收起补丁选项' : '展开补丁选项' }}</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200"
+              :class="{ 'rotate-180': showPatches }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="showPatches && drawerStore.editingProvider.compat" class="flex flex-col gap-3 bg-muted/20 p-3 rounded-xl">
+          <div class="flex items-center justify-between py-1">
+            <div class="text-xs text-foreground font-medium flex items-center">
+              <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
+              <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
+            </div>
+            <Switch
+              v-model="drawerStore.editingProvider.compat.omitResponsesReasoningStatus"
+              @change="() => { onFieldModified(); handleAutoSave(); }"
+            />
+          </div>
+        </div>
+      </div>
+
       <!-- Compat Settings Section -->
       <div class="flex flex-col gap-3 pt-3 border-t border-border">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            兼容性适配矩阵 (Compat)
-          </h4>
+          <div class="flex items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Pi Agent 兼容性适配矩阵 (Compat)
+            </h4>
+            <FieldDocButton field="compatMatrixOverview" title="兼容性适配矩阵全景与补丁机制" />
+          </div>
           <button
             type="button"
             class="text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -281,7 +325,7 @@
           </button>
         </div>
 
-        <div v-if="drawerStore.editingProvider.compat" class="flex flex-col gap-3">
+        <div v-if="showAdvancedCompat && drawerStore.editingProvider.compat" class="flex flex-col gap-3 bg-muted/20 p-3 rounded-xl">
           <!-- Thinking Format Select -->
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-foreground">思考链传递格式 (Thinking Format)</label>
@@ -403,6 +447,11 @@
                 v-model="drawerStore.editingProvider.compat.supportsFinishReason"
                 @change="() => { onFieldModified(); handleAutoSave(); }"
               />
+            </div>
+
+            <!-- 官方内置兼容性参数与 Pi Agent 原生开关 -->
+            <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border/40">
+              Pi Agent 原生兼容性选项
             </div>
 
             <!-- New GPT-5.4 / GPT-5.6 features -->
@@ -564,6 +613,7 @@ const drawerStore = useDrawerStore();
 const providerStore = useProviderStore();
 const presetsStore = usePresetsStore();
 
+const showPatches = ref(false);
 const showAdvancedCompat = ref(false);
 
 onMounted(() => {
