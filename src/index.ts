@@ -7,7 +7,7 @@ import { PiExtensionRuntime } from "./extension-runtime.js";
 export default async function (pi: ExtensionAPI): Promise<void> {
   const runtime = new PiExtensionRuntime(pi);
 
-  // 1. 启动初期异步预注册 YAML 中的 Providers
+  // 1. 启动初期从 SQLite 加载并注册 Providers / Models
   await runtime.registerAllProviders();
 
   // 2. 挂载生命周期钩子

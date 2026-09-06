@@ -2,11 +2,16 @@ import type { DatabaseSync as DatabaseSyncType } from "node:sqlite";
 import * as os from "node:os";
 import * as path from "node:path";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import type { AppSettings, ModelSchema, ProviderSchema } from "./types/index.js";
+import type { AppSettings, ModelInputType, ModelSchema, ProviderSchema } from "./types/index.js";
 import { adapterForPreset, resolveAdapterPolicy } from "./adapters/factory.js";
 import type { AdapterRequestContext } from "./adapters/types.js";
+import { ModelManagerComponent } from "./model-manager-ui.js";
+import { parseRecentModels, RECENT_MODELS_META_KEY, recordRecentModel } from "./model-manager-recent.js";
+import type { ModelManagerData, ModelManagerItem, RecentModelUse } from "./model-manager-types.js";
 
 const OVERFLOW_PATTERNS = [/context_length_exceeded/i, /maximum context length/i, /prompt is too long/i, /exceeds the context window/i, /token limit exceeded/i, /input tokens exceed/i];
 const DEFAULT_SETTINGS: AppSettings = { theme: "auto", enableHeaderTrace: true, enableAutoOverflowRecovery: true, activeProviderId: "" };
@@ -25,6 +30,7 @@ export class PiExtensionRuntime {
   private providers: ProviderSchema[] = [];
   private policies = new Map<string, { provider: ProviderSchema; model: ModelSchema; policy: ReturnType<typeof resolveAdapterPolicy> }>();
   private settings: AppSettings = { ...DEFAULT_SETTINGS };
+  private recentModels: RecentModelUse[] = [];
 
   constructor(pi: ExtensionAPI) {
     this.pi = pi;
@@ -61,7 +67,8 @@ export class PiExtensionRuntime {
       const settings = { ...DEFAULT_SETTINGS } as AppSettings;
       for (const row of metaRows) {
         const value = json(row.value);
-        if (row.key in settings && value !== undefined) (settings as any)[row.key] = value;
+        if (row.key === RECENT_MODELS_META_KEY) this.recentModels = parseRecentModels(value);
+        else if (row.key in settings && value !== undefined) (settings as any)[row.key] = value;
       }
       return { providers, settings };
     } finally { db.close(); }
@@ -81,10 +88,20 @@ export class PiExtensionRuntime {
     }
     this.policies.clear();
     for (const provider of this.providers) {
-      const models = (provider.models || []).map((model) => ({
-        ...model,
-        ...(provider.modelOverrides?.[model.id] || {}),
-      }));
+      const models = (provider.models || []).map((model) => {
+        const overridden = { ...model, ...(provider.modelOverrides?.[model.id] || {}) };
+        return {
+          ...overridden,
+          api: overridden.api || provider.api || "openai-completions",
+          baseUrl: overridden.baseUrl || provider.baseUrl,
+          headers: { ...(provider.headers || {}), ...(overridden.headers || {}) },
+          compat: { ...(provider.compat || {}), ...(overridden.compat || {}) },
+          input: (overridden.input?.length ? overridden.input : ["text"]) as ModelInputType[],
+          contextWindow: overridden.contextWindow || 128000,
+          maxTokens: overridden.maxTokens || 16384,
+          cost: overridden.cost || { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        };
+      });
       const effectiveProvider = { ...provider, models };
       this.registerProvider(effectiveProvider);
       for (const model of models) {
@@ -105,7 +122,7 @@ export class PiExtensionRuntime {
     this.pi.registerProvider(provider.id, {
       name: provider.name || provider.id, baseUrl: provider.baseUrl, apiKey: provider.apiKey, api: provider.api || "openai-completions",
       authHeader: provider.authHeader, headers: provider.headers,
-      models: models.map((model) => ({ id: model.id, name: model.name || model.id, api: model.api, baseUrl: model.baseUrl, reasoning: model.reasoning || false,
+      models: models.map((model) => ({ id: model.id, name: model.name || model.id, api: model.api, baseUrl: model.baseUrl || provider.baseUrl, reasoning: model.reasoning || false,
         thinkingLevelMap: model.thinkingLevelMap, input: model.input || ["text"], contextWindow: model.contextWindow || 128000,
         maxTokens: model.maxTokens || 16384, cost: model.cost || { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, headers: model.headers,
         samplingParams: model.samplingParams, compat: model.compat || provider.compat })),
@@ -166,13 +183,94 @@ export class PiExtensionRuntime {
     });
   }
 
+  private buildModelManagerData(ctx: ExtensionContext): ModelManagerData {
+    const current = (ctx as any).model as { provider?: string; id?: string } | undefined;
+    const recent = this.recentModels;
+    const recentAt = new Map(recent.map((entry) => [`${entry.providerId}\0${entry.modelId}`, entry.usedAt]));
+    const items: ModelManagerItem[] = [];
+    this.providers.forEach((provider, providerOrder) => {
+      (provider.models || []).forEach((model, modelOrder) => {
+        items.push({
+          providerId: provider.id,
+          providerName: provider.name || provider.id,
+          modelId: model.id,
+          modelName: model.name || model.id,
+          series: model.family || "Other",
+          providerOrder,
+          modelOrder,
+          usedAt: recentAt.get(`${provider.id}\\0${model.id}`),
+          isCurrent: current?.provider === provider.id && current?.id === model.id,
+          provider,
+          model,
+        });
+      });
+    });
+    return { items, currentProviderId: current?.provider, currentModelId: current?.id, recent };
+  }
+
+  private async saveRecentModel(providerId: string, modelId: string): Promise<void> {
+    const sqliteModuleName = ["node", "sqlite"].join(":");
+    const { DatabaseSync } = await import(sqliteModuleName);
+    const db: DatabaseSyncType = new DatabaseSync(this.dbPath);
+    try {
+      const next = recordRecentModel(this.recentModels, providerId, modelId);
+      db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(RECENT_MODELS_META_KEY, JSON.stringify(next));
+      this.recentModels = next;
+    } finally { db.close(); }
+  }
+
+  private async launchDesktopManager(ctx: ExtensionCommandContext): Promise<void> {
+    const extensionDir = path.dirname(fileURLToPath(import.meta.url));
+    const executableName = process.platform === "win32" ? "pi-modelprovider-manager.exe" : "pi-modelprovider-manager";
+    const candidates = [
+      path.join(extensionDir, "bin", executableName),
+      path.join(extensionDir, "..", "bin", executableName),
+      path.join(process.cwd(), "dist", "pi-modelprovider-manager", "bin", executableName),
+    ];
+    const executable = candidates.find((candidate) => existsSync(candidate));
+    if (!executable) {
+      ctx.ui.notify("未找到 Tauri 管理器程序，请先执行完整构建", "error");
+      return;
+    }
+    try {
+      const child = spawn(executable, [], { detached: true, stdio: "ignore", windowsHide: true });
+      child.unref();
+      ctx.ui.notify("Provider 管理器已启动；已有实例不会重复打开", "info");
+    } catch (error) {
+      ctx.ui.notify(`启动 Provider 管理器失败: ${error instanceof Error ? error.message : String(error)}`, "error");
+    }
+  }
+
+  private async openModelManager(ctx: ExtensionContext, initialQuery?: string): Promise<void> {
+    if (!ctx.hasUI) { ctx.ui.notify("当前运行模式没有可用的 TUI", "warning"); return; }
+    await ctx.ui.custom((tui, theme, _keybindings, done) => new ModelManagerComponent(tui, theme, {
+      getData: () => this.buildModelManagerData(ctx),
+      onCancel: () => done(null),
+      onSelect: async (item) => {
+        const model = (ctx as any).modelRegistry?.find(item.providerId, item.modelId);
+        if (!model) { ctx.ui.notify(`未找到模型 ${item.providerId}/${item.modelId}`, "warning"); return; }
+        const ok = await (this.pi as any).setModel(model);
+        if (!ok) { ctx.ui.notify(`无法切换到模型 ${item.providerId}/${item.modelId}`, "warning"); return; }
+        await this.saveRecentModel(item.providerId, item.modelId);
+        done(null);
+      },
+    }, initialQuery));
+  }
+
   public registerCommands(): void {
     this.pi.registerCommand("provider", { description: "管理和查看已注册的 AI 模型提供商 (/provider [list|reload])", handler: async (args: string, ctx: ExtensionCommandContext) => {
       const sub = args.trim().toLowerCase() || "list";
       if (sub === "reload") { await this.registerAllProviders(); ctx.ui.notify("已从 manager.db 重新加载提供商", "info"); return; }
-      if (sub === "list") { const list = this.providers.map((p) => `${p.enabled !== false ? "[Active]" : "[Disabled]"} ${p.id} (${p.name || "Unnamed"}) -> ${p.baseUrl} [${p.models?.length || 0} models]`).join("\n"); ctx.ui.notify(list || "暂无配置的提供商", "info"); return; }
+      if (sub === "list") { const list = this.providers.map((p) => `${p.enabled !== false ? "[Active]" : "[Disabled]"} ${p.id} (${p.name || "Unnamed"}) -> ${p.baseUrl} [${p.models?.length || 0} models]`).join("\\n"); ctx.ui.notify(list || "暂无配置的提供商", "info"); return; }
       ctx.ui.notify("用法: /provider [list|reload]", "warning");
     }});
+    this.pi.registerCommand("models", { description: "打开 Provider / Model 模型选择器", handler: async (args: string, ctx: ExtensionCommandContext) => {
+      await this.openModelManager(ctx, args.trim() || undefined);
+    }});
+    this.pi.registerCommand("model-manager", { description: "打开 Tauri Provider / Model 管理器", handler: async (_args: string, ctx: ExtensionCommandContext) => {
+      await this.launchDesktopManager(ctx);
+    }});
+    this.pi.registerShortcut("alt+p", { description: "打开 Provider / Model 模型选择器", handler: (ctx: ExtensionContext) => this.openModelManager(ctx) });
   }
 
   public registerTools(): void {
