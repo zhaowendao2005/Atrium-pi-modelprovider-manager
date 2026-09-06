@@ -12,10 +12,20 @@ use service::db::{
     app_meta_load, app_meta_save, db_backup, db_delete_model, db_delete_provider, db_export_json,
     db_get_health, db_get_stats, db_load_all, db_save_model, db_save_provider, init_sqlite_db, DbState,
 };
+use service::http_client::native_http_request;
 use service::preset::{get_preset_index, get_provider_preset};
 use service::test_runner::{
     abort_pi_agent_rpc, create_test_workspace, open_workspace_in_explorer, start_pi_agent_rpc,
 };
+
+#[tauri::command]
+fn toggle_devtools(window: tauri::WebviewWindow) {
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
 
 fn main() {
     let storage_dir = get_storage_dir().expect("Failed to get storage directory");
@@ -31,6 +41,7 @@ fn main() {
         }
     }
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -63,7 +74,11 @@ fn main() {
             create_test_workspace,
             start_pi_agent_rpc,
             abort_pi_agent_rpc,
-            open_workspace_in_explorer
+            open_workspace_in_explorer,
+            // DevTools
+            toggle_devtools,
+            // Native HTTP Client
+            native_http_request
         ])
         .run(context)
         .expect("error while running tauri application");

@@ -608,6 +608,7 @@ import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
+import FieldDocButton from "../../../components/ui/FieldDocButton.vue";
 
 const drawerStore = useDrawerStore();
 const providerStore = useProviderStore();
