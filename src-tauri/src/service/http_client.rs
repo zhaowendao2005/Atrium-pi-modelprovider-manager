@@ -21,10 +21,14 @@ pub struct NativeHttpResponse {
     pub body: String,
 }
 
+pub const DEFAULT_USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+
 #[tauri::command]
 pub async fn native_http_request(req: NativeHttpRequest) -> Result<NativeHttpResponse, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(req.timeout_ms.unwrap_or(15000)))
+        .user_agent(DEFAULT_USER_AGENT)
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 

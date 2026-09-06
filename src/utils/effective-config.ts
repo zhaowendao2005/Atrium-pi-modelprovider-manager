@@ -72,6 +72,45 @@ export interface EffectiveModelConfig {
   rawRuntimeRegistration: Record<string, unknown>;
 }
 
+export const PI_KERNEL_COMPAT_DEFAULTS: Record<string, boolean> = {
+  supportsFinishReason: true,
+  supportsUsageInStreaming: true,
+  supportsDeveloperRole: true,
+  supportsReasoningEffort: true,
+  supportsEagerToolInputStreaming: true,
+  supportsLongCacheRetention: true,
+  supportsCacheControlOnTools: true,
+  supportsTemperature: true,
+  supportsStrictMode: true,
+  forceAdaptiveThinking: false,
+  allowEmptySignature: false,
+  omitResponsesReasoningStatus: false,
+  supportsExplicitPromptCacheMode: false,
+  supportsAdditionalTools: false,
+  supportsToolSearch: false,
+  requiresToolResultName: false,
+  requiresAssistantAfterToolResult: false,
+  requiresReasoningContentOnAssistantMessages: false,
+  requiresThinkingAsText: false,
+  supportsStrictTools: false,
+  supportsToolReferences: false,
+  sendSessionAffinityHeaders: false,
+};
+
+export function getKernelCompatDefault(field: string): boolean {
+  return PI_KERNEL_COMPAT_DEFAULTS[field] ?? false;
+}
+
+export function getInheritedCompatFallback(
+  providerCompat: ProviderCompatibilityConfig | undefined,
+  field: string
+): boolean {
+  if (providerCompat && (providerCompat as any)[field] !== undefined) {
+    return Boolean((providerCompat as any)[field]);
+  }
+  return getKernelCompatDefault(field);
+}
+
 export function resolveEffectiveModelConfig(
   provider: ProviderSchema,
   model: ModelSchema
@@ -158,19 +197,20 @@ export function resolveEffectiveModelConfig(
   ) {
     const isModelSet = mCompat[key] !== undefined;
     const isProviderSet = pCompat[key] !== undefined;
-
     let finalVal = isModelSet ? mCompat[key] : (isProviderSet ? pCompat[key] : defaultValue);
     let source: EffectiveCompatItem["source"] = "default-fallback";
-    let sourceDescription = "默认缺省值";
+    let sourceDescription = defaultValue !== undefined ? `Pi 内核缺省 (${defaultValue ? "开启" : "关闭"})` : "未配置";
     let rawMode: EffectiveCompatItem["rawMode"] = "explicit";
 
     if (isModelSet) {
       source = "model-override";
-      sourceDescription = "模型自身显式配置";
+      const valText = typeof mCompat[key] === "boolean" ? (mCompat[key] ? "开启" : "关闭") : String(mCompat[key]);
+      sourceDescription = `模型显式覆盖 (${valText})`;
       rawMode = "custom";
     } else if (isProviderSet) {
       source = "provider-inherited";
-      sourceDescription = `继承自提供商 [${providerName}] (${String(pCompat[key])})`;
+      const valText = typeof pCompat[key] === "boolean" ? (pCompat[key] ? "开启" : "关闭") : String(pCompat[key]);
+      sourceDescription = `继承自提供商 [${providerName}] (${valText})`;
       rawMode = "inherit";
     }
 
@@ -191,7 +231,7 @@ export function resolveEffectiveModelConfig(
   addCompat("maxTokensField", "最大 Token 字段名 (maxTokensField)", "tokens", undefined);
   addCompat("thinkingTokenBudgetField", "思考预算字段 (thinkingTokenBudgetField)", "tokens", undefined);
   addCompat("supportsDeveloperRole", "支持 Developer 角色 (supportsDeveloperRole)", "roles", true);
-  addCompat("supportsReasoningEffort", "Reasoning Effort 传递 (supportsReasoningEffort)", "thinking", undefined);
+  addCompat("supportsReasoningEffort", "Reasoning Effort 传递 (supportsReasoningEffort)", "thinking", true);
   addCompat("forceAdaptiveThinking", "自适应思考 (forceAdaptiveThinking)", "thinking", false);
   addCompat("allowEmptySignature", "允许空思考签名 (allowEmptySignature)", "thinking", false);
   addCompat("supportsExplicitPromptCacheMode", "显式提示词缓存 (supportsExplicitPromptCacheMode)", "caching", false);
@@ -201,12 +241,13 @@ export function resolveEffectiveModelConfig(
   addCompat("requiresAssistantAfterToolResult", "工具后跟随 Assistant (requiresAssistantAfterToolResult)", "roles", false);
   addCompat("requiresReasoningContentOnAssistantMessages", "Assistant 含推理字段 (requiresReasoningContentOnAssistantMessages)", "thinking", false);
   addCompat("requiresThinkingAsText", "思考内容转文本 (requiresThinkingAsText)", "thinking", false);
-  addCompat("supportsEagerToolInputStreaming", "工具即时流式解析 (supportsEagerToolInputStreaming)", "tools", false);
-  addCompat("supportsLongCacheRetention", "1 小时长缓存 (supportsLongCacheRetention)", "caching", false);
+  addCompat("supportsEagerToolInputStreaming", "工具即时流式解析 (supportsEagerToolInputStreaming)", "tools", true);
+  addCompat("supportsLongCacheRetention", "1 小时长缓存 (supportsLongCacheRetention)", "caching", true);
   addCompat("supportsStrictTools", "严格模式 (supportsStrictTools)", "tools", false);
   addCompat("supportsToolReferences", "动态工具延迟引用 (supportsToolReferences)", "tools", false);
   addCompat("supportsUsageInStreaming", "流式包含 Token 统计 (supportsUsageInStreaming)", "network", true);
   addCompat("supportsFinishReason", "上游返回 finish_reason (supportsFinishReason)", "network", true);
+  addCompat("sendSessionAffinityHeaders", "发送会话粘性头 (sendSessionAffinityHeaders)", "caching", false);
 
   // 7. 预设追溯文案推导
   const presetId = model.basePresetId || (model.appliedPreset && model.appliedPreset !== "custom" ? model.appliedPreset : undefined);

@@ -1,0 +1,9 @@
+{
+  "id": "03_multi_tool_pipeline",
+  "name": "多工具链调用 (Multi-tool Pipeline)",
+  "description": "测试多工具调用体接收、链式执行与文件读写能力",
+  "category": "tools",
+  "order": 3,
+  "allow_net": false,
+  "expected_outputs": ["test_log.json", "test_results/command_results.txt"]
+}

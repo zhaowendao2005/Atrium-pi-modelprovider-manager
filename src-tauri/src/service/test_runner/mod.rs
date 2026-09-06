@@ -1,27 +1,34 @@
 use chrono::Local;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 use std::thread;
 use tauri::Emitter;
 
 const GROK_CORE_MODULE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../dist/adapters/grok-core.js"));
 
 use crate::service::config::get_storage_dir;
+use task_factory::{copy_task_to_workspace, list_test_tasks, TestTaskTemplate};
 
-// 全局活跃的 RPC 子进程与标准输入写入句柄
+pub mod task_factory;
+
+// 全局活跃的 RPC 子进程与标准输入写入句柄 (按 sessionId 索引)
 struct ActiveProcess {
     child: Child,
     stdin: ChildStdin,
 }
 
-static ACTIVE_PROCESS: Mutex<Option<ActiveProcess>> = Mutex::new(None);
+static ACTIVE_PROCESSES: LazyLock<Mutex<HashMap<String, ActiveProcess>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// 创建测试沙箱工作空间
 #[tauri::command]
-pub fn create_test_workspace(model_config: serde_json::Value) -> Result<String, String> {
+pub fn create_test_workspace(
+    model_config: serde_json::Value,
+    task_id: Option<String>,
+) -> Result<String, String> {
     let storage_dir = get_storage_dir()?;
     let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
     let config_repr = serde_json::to_string(&model_config).unwrap_or_default();
@@ -37,7 +44,12 @@ pub fn create_test_workspace(model_config: serde_json::Value) -> Result<String, 
     let test_results_dir = workspace_dir.join("test_results");
     fs::create_dir_all(&test_results_dir).map_err(|e| e.to_string())?;
 
-    // 生成技能提示词与工作规范
+    // 如果有 task_id，使用任务工厂复制任务模板
+    if let Some(task_id) = task_id {
+        copy_task_to_workspace(&task_id, &workspace_dir)?;
+    }
+
+    // 所有沙箱都生成通用安全规范（任务提示词会引用 skills.md / workspace_instructions.md）
     let skills_prompt = generate_skills_prompt(&workspace_dir);
     fs::write(workspace_dir.join("skills.md"), &skills_prompt).map_err(|e| e.to_string())?;
     fs::write(workspace_dir.join("README.md"), &skills_prompt).map_err(|e| e.to_string())?;
@@ -50,6 +62,12 @@ pub fn create_test_workspace(model_config: serde_json::Value) -> Result<String, 
         .map_err(|e| e.to_string())?;
 
     Ok(workspace_dir.to_string_lossy().to_string())
+}
+
+/// 列出所有可用的测试任务模板
+#[tauri::command]
+pub fn get_test_tasks() -> Result<Vec<TestTaskTemplate>, String> {
+    Ok(list_test_tasks())
 }
 
 fn generate_skills_prompt(workspace_dir: &Path) -> String {
@@ -105,16 +123,17 @@ fn generate_skills_prompt(workspace_dir: &Path) -> String {
     )
 }
 
-/// 启动 Pi Agent RPC 模式并建立双工事件流
+/// 启动指定 Session 的 Pi Agent RPC 模式并建立双工事件流
 #[tauri::command]
-pub fn start_pi_agent_rpc(
+pub fn start_session_rpc(
     app: tauri::AppHandle,
+    session_id: String,
     workspace_dir: String,
     model_config: serde_json::Value,
     prompt: String,
 ) -> Result<(), String> {
-    // 终止可能存在的旧进程
-    abort_pi_agent_rpc()?;
+    // 终止该 session 可能已存在的旧进程
+    abort_session_rpc(Some(session_id.clone()))?;
 
     let ws = PathBuf::from(&workspace_dir);
     if !ws.exists() {
@@ -257,7 +276,8 @@ export default function(pi) {{
     cmd.stderr(Stdio::piped());
 
     eprintln!(
-        "[test_runner] 🚀 启动 Agent: pi --mode rpc (Provider: '{}', Model: '{}', hasKey: {}) in {}",
+        "[test_runner] 🚀 [Session: {}] 启动 Agent: pi --mode rpc (Provider: '{}', Model: '{}', hasKey: {}) in {}",
+        session_id,
         provider_id,
         model_id,
         !api_key.is_empty(),
@@ -266,8 +286,9 @@ export default function(pi) {{
 
     let log_file_path = ws.join("test_runner.log");
     let init_log = format!(
-        "[{}] 启动 Pi Agent RPC 测试\n- 目录: {}\n- Provider: {}\n- Model: {}\n\n",
+        "[{}] 启动 Pi Agent RPC 测试 [Session: {}]\n- 目录: {}\n- Provider: {}\n- Model: {}\n\n",
         Local::now().format("%Y-%m-%d %H:%M:%S"),
+        session_id,
         ws.display(),
         provider_id,
         model_id
@@ -322,13 +343,14 @@ export default function(pi) {{
 
     // 保存进程句柄
     {
-        let mut lock = ACTIVE_PROCESS.lock().unwrap();
-        *lock = Some(ActiveProcess { child, stdin });
+        let mut lock = ACTIVE_PROCESSES.lock().unwrap();
+        lock.insert(session_id.clone(), ActiveProcess { child, stdin });
     }
 
     // 后台线程异步监听 stdout (JSON Lines)
     let app_handle = app.clone();
     let ws_stdout = ws.clone();
+    let sid_stdout = session_id.clone();
     thread::spawn(move || {
         let reader = BufReader::new(stdout);
         let log_path = ws_stdout.join("test_runner.log");
@@ -338,7 +360,7 @@ export default function(pi) {{
                 if !trimmed.is_empty() {
                     // 终端与日志关键过滤爆出，避免海量 text_delta 刷屏
                     if trimmed.contains("\"success\":false") || trimmed.contains("\"error\"") {
-                        eprintln!("[test_runner STDOUT ERROR] {}", trimmed);
+                        eprintln!("[test_runner STDOUT ERROR] [{}] {}", sid_stdout, trimmed);
                         if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&log_path) {
                             let _ = writeln!(f, "[ERROR] {}", trimmed);
                         }
@@ -347,12 +369,16 @@ export default function(pi) {{
                         || trimmed.contains("\"type\":\"tool_execution_start\"")
                         || trimmed.contains("\"type\":\"tool_execution_end\"")
                     {
-                        eprintln!("[test_runner STDOUT EVENT] {}", trimmed);
+                        eprintln!("[test_runner STDOUT EVENT] [{}] {}", sid_stdout, trimmed);
                         if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&log_path) {
                             let _ = writeln!(f, "[EVENT] {}", trimmed);
                         }
                     }
-                    let _ = app_handle.emit("pi-rpc-event", trimmed.to_string());
+                    let unified_payload = serde_json::json!({
+                        "sessionId": &sid_stdout,
+                        "raw": trimmed
+                    });
+                    let _ = app_handle.emit("pi-rpc-event", unified_payload.to_string());
                 }
             }
         }
@@ -361,6 +387,7 @@ export default function(pi) {{
     // 后台线程异步监听 stderr
     let app_stderr = app.clone();
     let ws_stderr = ws.clone();
+    let sid_stderr = session_id.clone();
     thread::spawn(move || {
         let reader = BufReader::new(stderr);
         let log_path = ws_stderr.join("test_runner.log");
@@ -368,7 +395,7 @@ export default function(pi) {{
             if let Ok(l) = line {
                 let trimmed = l.trim();
                 if !trimmed.is_empty() {
-                    eprintln!("[test_runner STDERR] {}", trimmed);
+                    eprintln!("[test_runner STDERR] [{}] {}", sid_stderr, trimmed);
                     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&log_path) {
                         let _ = writeln!(f, "[STDERR] {}", trimmed);
                     }
@@ -381,7 +408,12 @@ export default function(pi) {{
                         "type": event_type,
                         "text": trimmed,
                     });
-                    let _ = app_stderr.emit("pi-rpc-event", err_event.to_string());
+                    let err_str = err_event.to_string();
+                    let unified_payload = serde_json::json!({
+                        "sessionId": &sid_stderr,
+                        "raw": err_str
+                    });
+                    let _ = app_stderr.emit("pi-rpc-event", unified_payload.to_string());
                 }
             }
         }
@@ -390,21 +422,70 @@ export default function(pi) {{
     Ok(())
 }
 
-/// 终止当前运行中的 Pi Agent RPC 操作
+/// 继续向运行中的指定 Session 写入新的 Prompt 消息
 #[tauri::command]
-pub fn abort_pi_agent_rpc() -> Result<(), String> {
-    let mut lock = ACTIVE_PROCESS.lock().unwrap();
-    if let Some(mut proc) = lock.take() {
-        // 先发送优雅中断
-        let abort_cmd = "{\"type\": \"abort\"}\n";
-        let _ = proc.stdin.write_all(abort_cmd.as_bytes());
-        let _ = proc.stdin.flush();
+pub fn continue_session_rpc(session_id: String, prompt: String) -> Result<(), String> {
+    let mut lock = ACTIVE_PROCESSES.lock().unwrap();
+    if let Some(proc) = lock.get_mut(&session_id) {
+        let rpc_req = serde_json::json!({
+            "id": format!("req-{}", Local::now().timestamp_millis()),
+            "type": "prompt",
+            "message": prompt,
+        });
+        let mut req_str = serde_json::to_string(&rpc_req).map_err(|e| e.to_string())?;
+        req_str.push('\n');
 
-        // 稍作等待后强制关闭
-        thread::sleep(std::time::Duration::from_millis(150));
-        let _ = proc.child.kill();
+        proc.stdin.write_all(req_str.as_bytes()).map_err(|e| {
+            format!("向 Session [{}] RPC 管道写入 prompt 失败: {}", session_id, e)
+        })?;
+        proc.stdin.flush().map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err(format!("未找到 Session [{}] 对应的活跃进程", session_id))
+    }
+}
+
+/// 终止指定的 Session，或如果不提供 session_id 则终止全部 Session
+#[tauri::command]
+pub fn abort_session_rpc(session_id: Option<String>) -> Result<(), String> {
+    let mut lock = ACTIVE_PROCESSES.lock().unwrap();
+    if let Some(sid) = session_id {
+        if let Some(mut proc) = lock.remove(&sid) {
+            let abort_cmd = "{\"type\": \"abort\"}\n";
+            let _ = proc.stdin.write_all(abort_cmd.as_bytes());
+            let _ = proc.stdin.flush();
+            thread::sleep(std::time::Duration::from_millis(100));
+            let _ = proc.child.kill();
+        }
+    } else {
+        let keys: Vec<String> = lock.keys().cloned().collect();
+        for k in keys {
+            if let Some(mut proc) = lock.remove(&k) {
+                let abort_cmd = "{\"type\": \"abort\"}\n";
+                let _ = proc.stdin.write_all(abort_cmd.as_bytes());
+                let _ = proc.stdin.flush();
+                let _ = proc.child.kill();
+            }
+        }
     }
     Ok(())
+}
+
+/// 启动 Pi Agent RPC 模式（兼容旧接口）
+#[tauri::command]
+pub fn start_pi_agent_rpc(
+    app: tauri::AppHandle,
+    workspace_dir: String,
+    model_config: serde_json::Value,
+    prompt: String,
+) -> Result<(), String> {
+    start_session_rpc(app, "default".to_string(), workspace_dir, model_config, prompt)
+}
+
+/// 终止当前运行中的 Pi Agent RPC 操作（兼容旧接口）
+#[tauri::command]
+pub fn abort_pi_agent_rpc() -> Result<(), String> {
+    abort_session_rpc(None)
 }
 
 /// 在 Windows 资源管理器中打开指定工作空间

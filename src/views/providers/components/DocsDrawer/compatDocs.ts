@@ -332,4 +332,38 @@ OpenAI 推出的 Strict 模式强制模型在底层解码时 100% 遵循你给�
     description: "向中转站传递思考预算限制时使用的字段名（如 thinking_budget 或 thinking_token_budget）。",
     defaultValue: "继承提供商",
   },
+
+  supportsFinishReason: {
+    id: "supportsFinishReason",
+    name: "上游返回 finish_reason (supportsFinishReason)",
+    field: "supportsFinishReason",
+    category: "compat",
+    description: "声明上游流式响应是否会正常返回 finish_reason 终止原因字段。",
+    details: `在 OpenAI Completions 流式协议中，模型生成完毕的最后一个 chunk 通常会携带 finish_reason（例如 "stop"、"tool_calls" 或 "length"）。
+
+默认情况下（未配置或 true），Pi 内核严格要求上游在流结束前必须发送 finish_reason。如果中转站、代理网关或某些非标端点在流式结束时漏发、丢弃或提早断开 SSE 流，Pi 内核会抛出报错：
+"Error: Stream ended without finish_reason"
+"Error: Retry failed after 3 attempts: Retry cancelled"
+
+开启 (true): 
+严格等待上游发送 finish_reason。
+
+关闭 (false): 
+当流结束而未收到上游 finish_reason 时，Pi 内核会自动根据响应内容推断结束原因（若含有 tool_calls 则推断为 toolUse，否则推断为 stop），从而彻底解决上述报错！`,
+    impact: "如果遇到提供商报 'Stream ended without finish_reason' 导致重试失败，将此项设为关闭 (false) 即可瞬间恢复正常。",
+    defaultValue: "Pi 内核默认 true (遇故障请关闭)",
+  },
+
+  supportsUsageInStreaming: {
+    id: "supportsUsageInStreaming",
+    name: "流式包含 Token 统计 (supportsUsageInStreaming)",
+    field: "supportsUsageInStreaming",
+    category: "compat",
+    description: "流式请求时是否向请求体发送 stream_options: { include_usage: true } 以获取实时 Token 消耗统计。",
+    details: `开启后，Pi 在流式请求中会附带 stream_options: { include_usage: true }。上游在流式结束时会返回 usage 对象（包含 prompt_tokens、completion_tokens、total_tokens）。
+
+某些非标中转站或老旧模型网关如果不支持 stream_options 字段，可能会返回 400 Bad Request: Extra inputs are not permitted: stream_options。此时将其设为关闭 (false) 即可正常对话。`,
+    impact: "设为 false 避免老旧中转端点因不支持 stream_options 报错。",
+    defaultValue: "Pi 内核默认 true",
+  },
 };

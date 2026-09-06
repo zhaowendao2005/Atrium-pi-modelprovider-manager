@@ -20,6 +20,7 @@ export type TaskCategory =
   | "reasoning"
   | "tools"
   | "speed"
+  | "plan-execution"
   | "custom";
 
 export interface ToolInvocationState {
@@ -105,6 +106,12 @@ export interface TestTask {
   modelId?: string;
   systemPrompt?: string;
   userPrompt: string;
+  // 任务模板扩展字段
+  order?: number;
+  allowNet?: boolean;
+  expectedOutputs?: string[];
+  plan?: string;
+  docs?: Array<{ filename: string; content: string }>;
   // 运行记录
   status: "idle" | "running" | "success" | "failed" | "stopped";
   lastRunAt?: number;
@@ -117,11 +124,106 @@ export interface TestTask {
   };
 }
 
+export interface RequestMetricItem {
+  id: string;
+  index: number;
+  role: "assistant";
+  startTime: number;
+  firstTokenTime?: number;
+  endTime?: number;
+  ttftMs: number;
+  durationMs: number;
+  completionTokens: number;
+  tpsWithTtft: number;
+  tpsWithoutTtft: number;
+  hasTools: boolean;
+  toolNames: string[];
+  status: "streaming" | "completed" | "error";
+  error?: string;
+}
+
 export interface TestMetrics {
   totalDurationMs: number;
   firstTokenMs: number;
   totalTokens: number;
   completionTokens: number;
-  tps: number; // Tokens Per Second
+  tps: number; // Tokens Per Second (兼容历史字段)
+  tpsWithTtft: number; // 含首字 TPS (端到端速率)
+  tpsWithoutTtft: number; // 不含首字 TPS (纯解码速率)
   toolCallsCount: number;
+  requestMetrics: RequestMetricItem[];
 }
+
+export interface BatchModelTarget {
+  providerId: string;
+  modelId: string;
+  providerName: string;
+  modelName: string;
+}
+
+export interface BatchTestCardItem {
+  id: string;
+  target: BatchModelTarget;
+  status: "idle" | "queued" | "preparing" | "running" | "completed" | "failed" | "stopped";
+  workspaceDir?: string;
+  startTime?: number;
+  endTime?: number;
+  error?: string;
+  metrics: {
+    totalDurationMs: number;
+    firstTokenMs: number;
+    totalTokens: number;
+    completionTokens: number;
+    tpsWithTtft: number;
+    tpsWithoutTtft: number;
+    toolCallsCount: number;
+  };
+  liveLogs: string[];
+  toolNames: string[];
+  currentActionText?: string;
+}
+
+export type WorkbenchLayoutMode =
+  | "single"
+  | "dual"
+  | "quad"
+  | "multi-col"
+  | "two-row-multi-col";
+
+export interface TestSession {
+  id: string;
+  groupId?: string;
+  taskId: string;
+  providerId: string;
+  modelId: string;
+  providerName?: string;
+  modelName?: string;
+  status: "idle" | "preparing" | "running" | "completed" | "failed" | "stopped";
+  workspaceDir?: string;
+  messages: UIMessage[];
+  metrics: TestMetrics;
+  currentRequestMetric?: RequestMetricItem | null;
+  error?: string;
+  slotIndex?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TestGroup {
+  id: string;
+  name: string;
+  taskId: string;
+  layoutMode: WorkbenchLayoutMode;
+  concurrencyLimit: number;
+  sessionIds?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SessionFilterOptions {
+  taskId?: string;
+  status?: string;
+  dateRange?: "all" | "today" | "week" | "month";
+  searchQuery?: string;
+}
+

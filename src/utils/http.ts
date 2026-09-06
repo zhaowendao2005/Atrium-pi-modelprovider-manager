@@ -7,6 +7,9 @@ interface NativeHttpResponse {
   body: string;
 }
 
+export const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+
 /**
  * 安全且无跨域限制的 HTTP 请求函数
  * 优先调用 Rust 原生 reqwest 命令发送请求，
@@ -30,6 +33,12 @@ export async function safeFetch(url: string, init?: RequestInit): Promise<Respon
         } else {
           Object.assign(headersRecord, init.headers);
         }
+      }
+
+      // 若未指定 User-Agent，自动注入拟真 Chrome UA
+      const hasUa = Object.keys(headersRecord).some(k => k.toLowerCase() === "user-agent");
+      if (!hasUa) {
+        headersRecord["User-Agent"] = DEFAULT_USER_AGENT;
       }
 
       let bodyStr: string | undefined = undefined;

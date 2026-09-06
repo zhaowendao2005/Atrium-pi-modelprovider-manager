@@ -1,0 +1,9 @@
+{
+  "id": "02_deep_reasoning",
+  "name": "深度推理测试 (Deep Reasoning)",
+  "description": "检验模型思维链输出、严格目录隔离与安全边界推导",
+  "category": "reasoning",
+  "order": 2,
+  "allow_net": false,
+  "expected_outputs": ["test_log.json", "test_summary.txt"]
+}

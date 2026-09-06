@@ -12,13 +12,13 @@
     <!-- Header Bar (Click to toggle collapse) -->
     <button
       type="button"
-      class="w-full px-3.5 py-2.5 flex items-center justify-between text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
+      class="w-full px-3 py-2 flex items-center justify-between text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/40 gap-2"
       @click="isCollapsed = !isCollapsed"
     >
-      <div class="flex items-center gap-2.5 min-w-0">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
         <!-- Wrench / Tool SVG Icon -->
         <div
-          class="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+          class="w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0"
           :class="[
             tool.state === 'call' || tool.state === 'partial-call'
               ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
@@ -27,62 +27,71 @@
               : 'bg-primary/10 text-primary',
           ]"
         >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </div>
 
-        <!-- Tool Name & Call ID -->
-        <div class="flex items-baseline gap-2 min-w-0">
-          <span class="text-xs font-mono font-bold text-foreground truncate">
-            {{ tool.toolName }}
-          </span>
-          <span class="text-[10px] font-mono text-muted-foreground/60 truncate hidden sm:inline">
-            {{ tool.toolCallId }}
-          </span>
-        </div>
+        <!-- Tool Name (Never squashed to 1 letter) -->
+        <span
+          class="text-xs font-mono font-bold text-foreground flex-shrink-0 max-w-[130px] truncate"
+          :title="tool.toolName"
+        >
+          {{ tool.toolName }}
+        </span>
 
-        <!-- State Badge -->
+        <!-- Tool Call ID (Secondary, fills remaining space) -->
+        <span
+          class="text-[10px] font-mono text-muted-foreground/50 truncate min-w-0 flex-1 hidden sm:inline"
+          :title="tool.toolCallId"
+        >
+          {{ tool.toolCallId }}
+        </span>
+      </div>
+
+      <!-- Right: State Badge, Execution Time & Chevron Toggle -->
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <!-- State Badge (Strictly whitespace-nowrap and flex-shrink-0) -->
         <span
           v-if="tool.state === 'call' || tool.state === 'partial-call'"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400"
+          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 whitespace-nowrap flex-shrink-0"
         >
-          <svg class="animate-spin w-2.5 h-2.5" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          执行中
+          <span>执行中</span>
         </span>
 
         <span
           v-else-if="tool.error"
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-destructive/15 text-destructive"
+          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-destructive/15 text-destructive whitespace-nowrap flex-shrink-0"
         >
-          <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-          执行异常
+          <span>异常</span>
         </span>
 
         <span
           v-else
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 whitespace-nowrap flex-shrink-0"
         >
-          <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
           </svg>
-          已返回结果
+          <span>完成</span>
         </span>
-      </div>
 
-      <!-- Right: Execution Time & Chevron Toggle -->
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <span v-if="tool.executionTimeMs" class="text-[11px] font-mono text-muted-foreground/70">
+        <!-- Execution Time -->
+        <span v-if="tool.executionTimeMs" class="text-[10px] font-mono text-muted-foreground/70 whitespace-nowrap">
           {{ tool.executionTimeMs }}ms
         </span>
-        <div class="flex items-center text-muted-foreground transition-transform duration-200" :class="{ 'rotate-180': !isCollapsed }">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+        <!-- Chevron Toggle -->
+        <div class="flex items-center text-muted-foreground transition-transform duration-200 flex-shrink-0" :class="{ 'rotate-180': !isCollapsed }">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -92,7 +101,7 @@
     <!-- Expanded Body -->
     <div
       v-show="!isCollapsed"
-      class="px-3.5 pb-3.5 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-col gap-3"
+      class="px-3 pb-3 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-col gap-2.5"
     >
       <!-- Arguments Section -->
       <div class="flex flex-col gap-1">
@@ -109,7 +118,7 @@
             {{ copiedKey === 'args' ? '已复制' : '复制 JSON' }}
           </button>
         </div>
-        <pre class="bg-slate-900 text-slate-100 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto select-text leading-relaxed">{{ formattedArgs }}</pre>
+        <pre class="bg-slate-900 text-slate-100 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto select-text leading-relaxed apple-scrollbar max-h-60 break-all whitespace-pre-wrap">{{ formattedArgs }}</pre>
       </div>
 
       <!-- Result Section (if any) -->
@@ -127,7 +136,7 @@
             {{ copiedKey === 'result' ? '已复制' : '复制结果' }}
           </button>
         </div>
-        <pre class="bg-slate-900 text-emerald-400 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto select-text leading-relaxed">{{ formattedResult }}</pre>
+        <pre class="bg-slate-900 text-emerald-400 p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto select-text leading-relaxed apple-scrollbar max-h-60 break-all whitespace-pre-wrap">{{ formattedResult }}</pre>
       </div>
     </div>
   </div>
@@ -164,6 +173,17 @@ const formattedArgs = computed(() => {
 const formattedResult = computed(() => {
   if (props.tool.result === undefined) return "undefined";
   if (typeof props.tool.result === "string") return props.tool.result;
+  if (props.tool.result && typeof props.tool.result === "object") {
+    const res = props.tool.result as Record<string, any>;
+    if (Array.isArray(res.content) && res.content.length > 0) {
+      const texts = res.content
+        .filter((item: any) => item && typeof item === "object" && typeof item.text === "string")
+        .map((item: any) => item.text);
+      if (texts.length === res.content.length && texts.length > 0) {
+        return texts.join("\n");
+      }
+    }
+  }
   try {
     return JSON.stringify(props.tool.result, null, 2);
   } catch {

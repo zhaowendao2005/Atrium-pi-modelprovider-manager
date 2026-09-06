@@ -17,4 +17,10 @@ for (const directory of ["ui", "bin"]) {
   if (fs.existsSync(source)) fs.cpSync(source, path.join(packageDir, directory), { recursive: true });
 }
 
+// 测试任务模板：供 Tauri 测试工作台在运行时发现与扩展
+const testTaskTemplates = path.join(root, "src-tauri", "templates", "test_tasks");
+if (fs.existsSync(testTaskTemplates)) {
+  fs.cpSync(testTaskTemplates, path.join(packageDir, "templates", "test_tasks"), { recursive: true });
+}
+
 console.log(`[build] Plugin unit assembled at ${packageDir}`);

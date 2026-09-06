@@ -35,7 +35,7 @@
         <!-- Pulse Badge if streaming -->
         <span
           v-if="reasoning.state === 'streaming'"
-          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse"
+          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse whitespace-nowrap flex-shrink-0"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-indigo-500" />
           生成推理流
@@ -44,14 +44,14 @@
         <!-- Duration badge if completed -->
         <span
           v-else-if="reasoning.durationMs"
-          class="text-[11px] text-muted-foreground/80 font-mono"
+          class="text-[11px] text-muted-foreground/80 font-mono whitespace-nowrap flex-shrink-0"
         >
           耗时 {{ (reasoning.durationMs / 1000).toFixed(1) }}s
         </span>
       </div>
 
       <!-- Chevron Arrow SVG -->
-      <div class="flex items-center text-muted-foreground transition-transform duration-200" :class="{ 'rotate-180': !isCollapsed }">
+      <div class="flex items-center text-muted-foreground transition-transform duration-200 flex-shrink-0" :class="{ 'rotate-180': !isCollapsed }">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>
@@ -63,7 +63,7 @@
       v-show="!isCollapsed"
       class="px-3.5 pb-3 pt-1 border-t border-slate-200/50 dark:border-slate-800/50"
     >
-      <div class="text-xs font-mono text-muted-foreground/90 leading-relaxed whitespace-pre-wrap select-text">
+      <div class="text-xs font-mono text-muted-foreground/90 leading-relaxed whitespace-pre-wrap select-text break-words overflow-hidden">
         {{ reasoning.content }}
         <span
           v-if="reasoning.state === 'streaming'"

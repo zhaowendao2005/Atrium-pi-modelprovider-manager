@@ -3,7 +3,7 @@
     <!-- Virtual Scroll Viewport Container (with Apple-style Sleek Scrollbar) -->
     <div
       ref="containerRef"
-      class="w-full flex-1 overflow-y-auto overflow-x-hidden apple-scrollbar px-6 py-4"
+      class="w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden apple-scrollbar px-3.5 py-3"
       @scroll="handleScroll"
     >
       <!-- Empty State -->
@@ -38,11 +38,11 @@
     <!-- Scroll-to-Bottom Floating Button (Appears when scrolled up) -->
     <div
       v-if="!isPinnedToBottom && messages.length > 0"
-      class="absolute bottom-4 right-6 z-10"
+      class="absolute bottom-3 right-4 z-10"
     >
       <button
         type="button"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg shadow-black/10 text-xs font-medium text-foreground hover:bg-accent transition-all active:scale-95"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/95 backdrop-blur-md border border-border/80 shadow-md text-[11px] font-medium text-foreground hover:bg-muted transition-all active:scale-95"
         @click="scrollToBottom(true)"
       >
         <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

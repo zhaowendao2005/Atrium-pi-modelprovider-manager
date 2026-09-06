@@ -10,17 +10,7 @@
           </span>
         </div>
 
-        <!-- Add Custom Task Button -->
-        <button
-          type="button"
-          title="创建自定义测试任务"
-          class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          @click="$emit('open-create-modal')"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+        <span class="text-[11px] text-muted-foreground/70">内置任务目录</span>
       </div>
 
       <!-- Search Input -->
@@ -164,13 +154,8 @@
 
 <script setup lang="ts">
 import { useTestingStore } from "../../../stores/testing.js";
-import { DEFAULT_TEST_TASKS } from "../../../stores/testing-presets.js";
 import AppleScrollArea from "../../../components/ui/AppleScrollArea.vue";
 import type { TaskCategory } from "../../../types/testing.js";
-
-defineEmits<{
-  (e: "open-create-modal"): void;
-}>();
 
 const testingStore = useTestingStore();
 
@@ -180,14 +165,13 @@ const categories: Array<{ id: TaskCategory; label: string }> = [
   { id: "reasoning", label: "深度推理" },
   { id: "tools", label: "工具链" },
   { id: "speed", label: "基准测速" },
+  { id: "plan-execution", label: "计划执行" },
   { id: "custom", label: "自定义" },
 ];
 
-function restoreDefaultTasks() {
-  if (confirm("确定要将测试任务列表重置为初始预设吗？自定义任务将会被清空。")) {
-    testingStore.tasks = JSON.parse(JSON.stringify(DEFAULT_TEST_TASKS));
-    testingStore.selectTask(DEFAULT_TEST_TASKS[0].id);
-  }
+async function restoreDefaultTasks() {
+  if (!confirm("确定要将测试任务列表重置为内置任务模板吗？自定义任务将会被清空。")) return;
+  await testingStore.reloadTasks();
 }
 </script>
 

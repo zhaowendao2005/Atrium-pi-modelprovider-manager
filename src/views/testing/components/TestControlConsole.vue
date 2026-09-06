@@ -97,19 +97,25 @@
 
       <!-- Right: Real-time Performance Capsules -->
       <div class="flex items-center gap-2 font-mono text-[11px] overflow-x-auto no-scrollbar">
-        <!-- TTFT (First token latency) -->
-        <div class="px-2.5 py-1 rounded-lg bg-muted/60 border border-border/50 text-foreground/80 flex items-center gap-1.5 whitespace-nowrap">
-          <span class="text-muted-foreground font-sans text-[10px]">首字延迟</span>
+        <!-- TPS with TTFT (End-to-End) -->
+        <div
+          class="px-2.5 py-1 rounded-lg bg-muted/60 border border-border/50 text-foreground/80 flex items-center gap-1.5 whitespace-nowrap"
+          title="端到端平均响应速率 (含首字等待时间)"
+        >
+          <span class="text-muted-foreground font-sans text-[10px]">含首字</span>
           <span class="font-bold text-foreground">
-            {{ testingStore.metrics.firstTokenMs ? `${testingStore.metrics.firstTokenMs}ms` : '--' }}
+            {{ testingStore.metrics.tpsWithTtft ? `${testingStore.metrics.tpsWithTtft} tps` : '--' }}
           </span>
         </div>
 
-        <!-- TPS (Tokens per second) -->
-        <div class="px-2.5 py-1 rounded-lg bg-muted/60 border border-border/50 text-foreground/80 flex items-center gap-1.5 whitespace-nowrap">
-          <span class="text-muted-foreground font-sans text-[10px]">速率</span>
-          <span class="font-bold text-foreground">
-            {{ testingStore.metrics.tps ? `${testingStore.metrics.tps} tps` : '--' }}
+        <!-- TPS without TTFT (Pure Generation Decode) -->
+        <div
+          class="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center gap-1.5 whitespace-nowrap"
+          title="纯 Token 解码生成速率 (扣除首字延迟)"
+        >
+          <span class="text-primary/70 font-sans text-[10px]">不含首字</span>
+          <span class="font-bold">
+            {{ testingStore.metrics.tpsWithoutTtft ? `${testingStore.metrics.tpsWithoutTtft} tps` : '--' }}
           </span>
         </div>
 

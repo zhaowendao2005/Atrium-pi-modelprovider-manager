@@ -13,6 +13,21 @@ export const useDrawerStore = defineStore("drawer", {
     // 二级抽屉：字段详情文档
     isFieldDocOpen: false as boolean,
     activeDocField: null as string | null,
+    // 测试工作台：任务资料抽屉（计划文档 / 参考资料 / 期望产出）
+    isTestTaskMaterialsOpen: false as boolean,
+    testTaskMaterialTab: "plan" as "plan" | "docs" | "outputs",
+    activeTestTaskDocName: null as string | null,
+    // 测试工作台：任务元信息详情抽屉
+    isTestTaskDetailsOpen: false as boolean,
+    // 测试工作台：时序指标抽屉
+    isTestMetricsOpen: false as boolean,
+    activeMetricsSessionId: null as string | null,
+    // 测试工作台：批量发布模态框
+    isBatchTestModalOpen: false as boolean,
+    // 测试工作台：全屏发起新测试模态框
+    isLauncherModalOpen: false as boolean,
+    // 测试工作台：全屏放大卡片会话模态框
+    focusedModalSessionId: null as string | null,
   }),
 
   actions: {
@@ -24,6 +39,70 @@ export const useDrawerStore = defineStore("drawer", {
     closeFieldDoc() {
       this.isFieldDocOpen = false;
       this.activeDocField = null;
+    },
+
+    openTestTaskMaterials(tab: "plan" | "docs" | "outputs" = "plan") {
+      this.testTaskMaterialTab = tab;
+      this.activeTestTaskDocName = null;
+      this.isTestTaskMaterialsOpen = true;
+    },
+
+    setTestTaskMaterialTab(tab: "plan" | "docs" | "outputs") {
+      this.testTaskMaterialTab = tab;
+    },
+
+    openTestTaskDoc(name: string) {
+      this.activeTestTaskDocName = name;
+      this.testTaskMaterialTab = "docs";
+      this.isTestTaskMaterialsOpen = true;
+    },
+
+    closeTestTaskMaterials() {
+      this.isTestTaskMaterialsOpen = false;
+      this.activeTestTaskDocName = null;
+    },
+
+    openTestTaskDetails() {
+      this.isTestTaskDetailsOpen = true;
+    },
+
+    closeTestTaskDetails() {
+      this.isTestTaskDetailsOpen = false;
+    },
+
+    openTestMetrics(sessionId?: string) {
+      if (sessionId) {
+        this.activeMetricsSessionId = sessionId;
+      }
+      this.isTestMetricsOpen = true;
+    },
+
+    closeTestMetrics() {
+      this.isTestMetricsOpen = false;
+    },
+
+    openBatchTestModal() {
+      this.isBatchTestModalOpen = true;
+    },
+
+    closeBatchTestModal() {
+      this.isBatchTestModalOpen = false;
+    },
+
+    openLauncherModal() {
+      this.isLauncherModalOpen = true;
+    },
+
+    closeLauncherModal() {
+      this.isLauncherModalOpen = false;
+    },
+
+    openFocusedModal(sessionId: string) {
+      this.focusedModalSessionId = sessionId;
+    },
+
+    closeFocusedModal() {
+      this.focusedModalSessionId = null;
     },
 
     openProviderDrawer(type: "provider-add" | "provider-edit", provider?: ProviderSchema) {

@@ -15,10 +15,10 @@
     <!-- 2. User Role Message -->
     <div
       v-else-if="message.role === 'user'"
-      class="flex justify-end pl-10"
+      class="flex justify-end pl-6"
     >
-      <div class="max-w-2xl bg-primary text-primary-foreground px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm shadow-primary/10">
-        <div class="text-xs font-sans leading-relaxed whitespace-pre-wrap select-text">
+      <div class="max-w-[88%] bg-primary text-primary-foreground px-3.5 py-2.5 rounded-2xl rounded-tr-sm shadow-sm shadow-primary/10 break-words">
+        <div class="text-xs font-sans leading-relaxed whitespace-pre-wrap select-text break-words">
           {{ message.content }}
         </div>
         <div class="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-primary-foreground/70">
@@ -29,8 +29,8 @@
 
     <!-- 3. Assistant Role Message (Streaming / Reasoning / Tools / Text) -->
     <div
-      v-else-if="message.role === 'assistant'"
-      class="flex gap-3 max-w-3xl pr-4"
+      v-else-if="message.role === 'assistant' && hasAssistantContent"
+      class="flex gap-2.5 w-full min-w-0"
     >
       <!-- Assistant Avatar / Badge -->
       <div class="w-7 h-7 rounded-xl bg-card border border-border/80 shadow-xs flex items-center justify-center flex-shrink-0 text-primary mt-0.5">
@@ -40,7 +40,7 @@
       </div>
 
       <!-- Assistant Body: 按照真实发起的时间线时序单向推进 -->
-      <div class="flex-1 min-w-0 flex flex-col gap-2.5">
+      <div class="flex-1 min-w-0 flex flex-col gap-2">
         <!-- 3.1 现代 Agent 时间线流式渲染 (Timeline Stream) -->
         <template v-if="message.parts && message.parts.length > 0">
           <template v-for="part in message.parts" :key="part.id">
@@ -59,7 +59,7 @@
             <!-- (3) 正文文本段落 (按时间线出现，真正有内容流出时才展示卡片) -->
             <div
               v-else-if="part.type === 'text' && part.content && part.content.length > 0"
-              class="rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-4 text-xs text-foreground leading-relaxed select-text shadow-xs"
+              class="rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-3.5 text-xs text-foreground leading-relaxed select-text shadow-xs break-words overflow-hidden"
             >
               <div class="flex flex-col gap-2.5">
                 <template v-for="(block, idx) in parseBlocks(part.content)" :key="idx">
@@ -78,13 +78,13 @@
                         {{ copiedKey === `${part.id}-${idx}` ? '已复制' : '复制' }}
                       </button>
                     </div>
-                    <pre class="p-3 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">{{ block.text }}</pre>
+                    <pre class="p-3 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed apple-scrollbar select-text">{{ block.text }}</pre>
                   </div>
 
                   <!-- Normal text paragraph -->
                   <div
                     v-else
-                    class="whitespace-pre-wrap leading-relaxed"
+                    class="whitespace-pre-wrap leading-relaxed break-words overflow-hidden"
                     v-html="renderInlineMarkdown(block.text)"
                   />
                 </template>
@@ -114,7 +114,7 @@
           </div>
           <div
             v-if="message.content && message.content.length > 0"
-            class="rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-4 text-xs text-foreground leading-relaxed select-text shadow-xs"
+            class="rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-3.5 text-xs text-foreground leading-relaxed select-text shadow-xs break-words overflow-hidden"
           >
             <div class="flex flex-col gap-2.5">
               <template v-for="(block, idx) in parseBlocks(message.content)" :key="idx">
@@ -132,11 +132,11 @@
                       {{ copiedKey === `legacy-${idx}` ? '已复制' : '复制' }}
                     </button>
                   </div>
-                  <pre class="p-3 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">{{ block.text }}</pre>
+                  <pre class="p-3 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed apple-scrollbar select-text">{{ block.text }}</pre>
                 </div>
                 <div
                   v-else
-                  class="whitespace-pre-wrap leading-relaxed"
+                  class="whitespace-pre-wrap leading-relaxed break-words overflow-hidden"
                   v-html="renderInlineMarkdown(block.text)"
                 />
               </template>
@@ -144,21 +144,15 @@
           </div>
         </template>
 
-        <!-- 3.3 底部传输状态与时间戳信息 -->
-        <div class="pt-1 flex items-center justify-between text-[10px] text-muted-foreground/70 px-1">
-          <div class="flex items-center gap-2">
-            <span v-if="message.isStreaming" class="text-primary font-medium flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              正在传输中...
-            </span>
-            <span v-else class="flex items-center gap-1 text-muted-foreground/80">
-              <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              传输完成
+        <!-- 3.3 底部状态与时间戳信息 -->
+        <div v-if="message.isStreaming || message.createdAt" class="pt-1 flex items-center justify-between text-[10px] text-muted-foreground/60 px-1">
+          <div>
+            <span v-if="message.isStreaming" class="text-primary font-medium flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              正在生成...
             </span>
           </div>
-          <span>{{ formatTime(message.createdAt) }}</span>
+          <span v-if="message.createdAt">{{ formatTime(message.createdAt) }}</span>
         </div>
       </div>
     </div>
@@ -166,14 +160,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import type { UIMessage } from "../../../types/testing.js";
 import ReasoningBlock from "./ReasoningBlock.vue";
 import ToolInvocationItem from "./ToolInvocationItem.vue";
 
-defineProps<{
+const props = defineProps<{
   message: UIMessage;
 }>();
+
+const hasAssistantContent = computed(() => {
+  if (props.message.parts && props.message.parts.length > 0) {
+    return props.message.parts.some((p) => {
+      if (p.type === "reasoning") return !!p.content?.trim();
+      if (p.type === "tool") return true;
+      if (p.type === "text") return !!p.content?.trim();
+      return false;
+    });
+  }
+  return (
+    !!props.message.content?.trim() ||
+    !!props.message.reasoning?.content?.trim() ||
+    (props.message.toolInvocations && props.message.toolInvocations.length > 0)
+  );
+});
 
 const copiedKey = ref<string | null>(null);
 
@@ -233,7 +243,7 @@ function renderInlineMarkdown(rawText: string): string {
   safe = safe.replace(/^### (.*$)/gim, '<h3 class="text-xs font-bold text-foreground mt-2 mb-1">$1</h3>');
   safe = safe.replace(/^## (.*$)/gim, '<h2 class="text-sm font-bold text-foreground mt-2 mb-1">$1</h2>');
   safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
-  safe = safe.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-muted font-mono text-[11px] text-primary">$1</code>');
+  safe = safe.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-muted font-mono text-[11px] text-primary break-all inline align-baseline">$1</code>');
 
   return safe;
 }

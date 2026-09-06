@@ -70,6 +70,35 @@ pub fn init_sqlite_db(conn: &Connection) -> Result<(), rusqlite::Error> {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS test_groups (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            task_id TEXT NOT NULL,
+            layout_mode TEXT NOT NULL DEFAULT 'single',
+            concurrency_limit INTEGER NOT NULL DEFAULT 4,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS test_sessions (
+            id TEXT PRIMARY KEY,
+            group_id TEXT,
+            task_id TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            model_id TEXT NOT NULL,
+            provider_name TEXT,
+            model_name TEXT,
+            status TEXT NOT NULL DEFAULT 'idle',
+            workspace_dir TEXT,
+            messages_json TEXT,
+            metrics_json TEXT,
+            error TEXT,
+            slot_index INTEGER DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            FOREIGN KEY (group_id) REFERENCES test_groups(id) ON DELETE CASCADE
+        );
         ",
     )?;
     Ok(())
@@ -409,6 +438,186 @@ pub fn db_get_stats(state: tauri::State<DbState>) -> Result<serde_json::Value, S
     let providers: i64 = conn.query_row("SELECT COUNT(*) FROM providers", [], |row| row.get(0)).map_err(|e| e.to_string())?;
     let models: i64 = conn.query_row("SELECT COUNT(*) FROM models", [], |row| row.get(0)).map_err(|e| e.to_string())?;
     Ok(serde_json::json!({"providers": providers, "models": models}))
+}
+
+#[tauri::command]
+pub fn db_load_test_history(state: tauri::State<DbState>) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let mut group_stmt = conn
+        .prepare(
+            "SELECT id, name, task_id, layout_mode, concurrency_limit, created_at, updated_at
+             FROM test_groups ORDER BY created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let group_rows = group_stmt
+        .query_map([], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "name": row.get::<_, String>(1)?,
+                "taskId": row.get::<_, String>(2)?,
+                "layoutMode": row.get::<_, String>(3)?,
+                "concurrencyLimit": row.get::<_, i64>(4)?,
+                "createdAt": row.get::<_, i64>(5)?,
+                "updatedAt": row.get::<_, i64>(6)?,
+            }))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut groups = Vec::new();
+    for g in group_rows {
+        if let Ok(group) = g {
+            groups.push(group);
+        }
+    }
+
+    let mut session_stmt = conn
+        .prepare(
+            "SELECT id, group_id, task_id, provider_id, model_id, provider_name, model_name,
+                    status, workspace_dir, messages_json, metrics_json, error, slot_index,
+                    created_at, updated_at
+             FROM test_sessions ORDER BY created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let session_rows = session_stmt
+        .query_map([], |row| {
+            let messages_json: Option<String> = row.get(9)?;
+            let metrics_json: Option<String> = row.get(10)?;
+            let messages: serde_json::Value = messages_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or(serde_json::json!([]));
+            let metrics: serde_json::Value = metrics_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or(serde_json::json!({}));
+
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "groupId": row.get::<_, Option<String>>(1)?,
+                "taskId": row.get::<_, String>(2)?,
+                "providerId": row.get::<_, String>(3)?,
+                "modelId": row.get::<_, String>(4)?,
+                "providerName": row.get::<_, Option<String>>(5)?,
+                "modelName": row.get::<_, Option<String>>(6)?,
+                "status": row.get::<_, String>(7)?,
+                "workspaceDir": row.get::<_, Option<String>>(8)?,
+                "messages": messages,
+                "metrics": metrics,
+                "error": row.get::<_, Option<String>>(11)?,
+                "slotIndex": row.get::<_, Option<i64>>(12)?,
+                "createdAt": row.get::<_, i64>(13)?,
+                "updatedAt": row.get::<_, i64>(14)?,
+            }))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut sessions = Vec::new();
+    for s in session_rows {
+        if let Ok(session) = s {
+            sessions.push(session);
+        }
+    }
+
+    Ok(serde_json::json!({
+        "groups": groups,
+        "sessions": sessions,
+    }))
+}
+
+#[tauri::command]
+pub fn db_save_test_group(state: tauri::State<DbState>, group: serde_json::Value) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let id = group.get("id").and_then(|v| v.as_str()).ok_or("Group id missing")?;
+    let name = group.get("name").and_then(|v| v.as_str()).unwrap_or("未命名测试组");
+    let task_id = group.get("taskId").and_then(|v| v.as_str()).unwrap_or("");
+    let layout_mode = group.get("layoutMode").and_then(|v| v.as_str()).unwrap_or("single");
+    let concurrency_limit = group.get("concurrencyLimit").and_then(|v| v.as_i64()).unwrap_or(4);
+    let now = chrono_now_ms();
+    let created_at = group.get("createdAt").and_then(|v| v.as_i64()).unwrap_or(now);
+
+    conn.execute(
+        "INSERT INTO test_groups (id, name, task_id, layout_mode, concurrency_limit, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            task_id = excluded.task_id,
+            layout_mode = excluded.layout_mode,
+            concurrency_limit = excluded.concurrency_limit,
+            updated_at = excluded.updated_at",
+        params![id, name, task_id, layout_mode, concurrency_limit, created_at, now],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn db_delete_test_group(state: tauri::State<DbState>, group_id: String) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM test_sessions WHERE group_id = ?1", params![group_id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM test_groups WHERE id = ?1", params![group_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn db_save_test_session(state: tauri::State<DbState>, session: serde_json::Value) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let id = session.get("id").and_then(|v| v.as_str()).ok_or("Session id missing")?;
+    let group_id = session.get("groupId").and_then(|v| v.as_str());
+    let task_id = session.get("taskId").and_then(|v| v.as_str()).unwrap_or("");
+    let provider_id = session.get("providerId").and_then(|v| v.as_str()).unwrap_or("");
+    let model_id = session.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
+    let provider_name = session.get("providerName").and_then(|v| v.as_str());
+    let model_name = session.get("modelName").and_then(|v| v.as_str());
+    let status = session.get("status").and_then(|v| v.as_str()).unwrap_or("idle");
+    let workspace_dir = session.get("workspaceDir").and_then(|v| v.as_str());
+    let messages_json = session.get("messages").map(|v| serde_json::to_string(v).unwrap_or_else(|_| "[]".into()));
+    let metrics_json = session.get("metrics").map(|v| serde_json::to_string(v).unwrap_or_else(|_| "{}".into()));
+    let error = session.get("error").and_then(|v| v.as_str());
+    let slot_index = session.get("slotIndex").and_then(|v| v.as_i64()).unwrap_or(0);
+    let now = chrono_now_ms();
+    let created_at = session.get("createdAt").and_then(|v| v.as_i64()).unwrap_or(now);
+
+    conn.execute(
+        "INSERT INTO test_sessions (
+            id, group_id, task_id, provider_id, model_id, provider_name, model_name,
+            status, workspace_dir, messages_json, metrics_json, error, slot_index,
+            created_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+         ON CONFLICT(id) DO UPDATE SET
+            group_id = excluded.group_id,
+            task_id = excluded.task_id,
+            provider_id = excluded.provider_id,
+            model_id = excluded.model_id,
+            provider_name = excluded.provider_name,
+            model_name = excluded.model_name,
+            status = excluded.status,
+            workspace_dir = excluded.workspace_dir,
+            messages_json = excluded.messages_json,
+            metrics_json = excluded.metrics_json,
+            error = excluded.error,
+            slot_index = excluded.slot_index,
+            updated_at = excluded.updated_at",
+        params![
+            id, group_id, task_id, provider_id, model_id, provider_name, model_name,
+            status, workspace_dir, messages_json, metrics_json, error, slot_index,
+            created_at, now
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn db_delete_test_session(state: tauri::State<DbState>, session_id: String) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM test_sessions WHERE id = ?1", params![session_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 pub fn chrono_now_ms() -> i64 {

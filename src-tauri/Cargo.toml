@@ -21,6 +21,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 chrono = "0.4"
 md5 = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+include_dir = "0.7"
 
 [features]
 default = ["custom-protocol"]

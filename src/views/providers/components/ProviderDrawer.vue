@@ -285,14 +285,19 @@
         </div>
 
         <div v-if="showPatches && drawerStore.editingProvider.compat" class="flex flex-col gap-3 bg-muted/20 p-3 rounded-xl">
-          <div class="flex items-center justify-between py-1">
-            <div class="text-xs text-foreground font-medium flex items-center">
-              <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
-              <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
+          <div class="flex items-center justify-between py-1.5">
+            <div>
+              <div class="text-xs text-foreground font-medium flex items-center">
+                <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
+                <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
+              </div>
+              <div class="text-[11px] text-muted-foreground">从上下文重放的 reasoning 块中移除 output-only 字段 'status'</div>
             </div>
-            <Switch
-              v-model="drawerStore.editingProvider.compat.omitResponsesReasoningStatus"
-              @change="() => { onFieldModified(); handleAutoSave(); }"
+            <TriStateSegment
+              type="provider"
+              :model-value="getCompatBool('omitResponsesReasoningStatus')"
+              :fallback-value="getKernelCompatDefault('omitResponsesReasoningStatus')"
+              @update:model-value="val => setCompatBool('omitResponsesReasoningStatus', val)"
             />
           </div>
         </div>
@@ -347,25 +352,35 @@
           </div>
 
           <!-- Common Switches -->
-          <div class="flex items-center justify-between py-1">
+          <div class="flex items-center justify-between py-1.5">
             <div>
-              <div class="text-xs text-foreground">流式包含 Token 统计 (supportsUsageInStreaming)</div>
+              <div class="text-xs text-foreground flex items-center">
+                <span>流式包含 Token 统计 (supportsUsageInStreaming)</span>
+                <FieldDocButton field="supportsUsageInStreaming" title="流式包含 Token 统计" />
+              </div>
               <div class="text-[11px] text-muted-foreground">发送 stream_options: { include_usage: true }</div>
             </div>
-            <Switch
-              v-model="drawerStore.editingProvider.compat.supportsUsageInStreaming"
-              @change="() => { onFieldModified(); handleAutoSave(); }"
+            <TriStateSegment
+              type="provider"
+              :model-value="getCompatBool('supportsUsageInStreaming')"
+              :fallback-value="getKernelCompatDefault('supportsUsageInStreaming')"
+              @update:model-value="val => setCompatBool('supportsUsageInStreaming', val)"
             />
           </div>
 
-          <div class="flex items-center justify-between py-1">
+          <div class="flex items-center justify-between py-1.5">
             <div>
-              <div class="text-xs text-foreground">自适应思考格式 (forceAdaptiveThinking)</div>
+              <div class="text-xs text-foreground flex items-center">
+                <span>自适应思考格式 (forceAdaptiveThinking)</span>
+                <FieldDocButton field="forceAdaptiveThinking" title="自适应思考格式" />
+              </div>
               <div class="text-[11px] text-muted-foreground">强制使用 Claude 3.7+ 的 adaptive thinking 协议</div>
             </div>
-            <Switch
-              v-model="drawerStore.editingProvider.compat.forceAdaptiveThinking"
-              @change="() => { onFieldModified(); handleAutoSave(); }"
+            <TriStateSegment
+              type="provider"
+              :model-value="getCompatBool('forceAdaptiveThinking')"
+              :fallback-value="getKernelCompatDefault('forceAdaptiveThinking')"
+              @update:model-value="val => setCompatBool('forceAdaptiveThinking', val)"
             />
           </div>
 
@@ -396,14 +411,19 @@
             </div>
 
             <!-- Session Affinity -->
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">发送会话粘性头 (sendSessionAffinityHeaders)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>发送会话粘性头 (sendSessionAffinityHeaders)</span>
+                  <FieldDocButton field="sendSessionAffinityHeaders" title="发送会话粘性头" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">开启后在启用提示词缓存时附带 session affinity 请求头</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.sendSessionAffinityHeaders"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('sendSessionAffinityHeaders')"
+                :fallback-value="getKernelCompatDefault('sendSessionAffinityHeaders')"
+                @update:model-value="val => setCompatBool('sendSessionAffinityHeaders', val)"
               />
             </div>
 
@@ -416,36 +436,51 @@
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">支持 Developer 角色 (supportsDeveloperRole)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>支持 Developer 角色 (supportsDeveloperRole)</span>
+                  <FieldDocButton field="supportsDeveloperRole" title="支持 Developer 角色" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">设为关闭则自动回退为 system 角色</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsDeveloperRole"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsDeveloperRole')"
+                :fallback-value="getKernelCompatDefault('supportsDeveloperRole')"
+                @update:model-value="val => setCompatBool('supportsDeveloperRole', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">发送 reasoning_effort (supportsReasoningEffort)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>发送 reasoning_effort (supportsReasoningEffort)</span>
+                  <FieldDocButton field="supportsReasoningEffort" title="发送 reasoning_effort" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">是否向下游发送 reasoning_effort 推理强度</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsReasoningEffort"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsReasoningEffort')"
+                :fallback-value="getKernelCompatDefault('supportsReasoningEffort')"
+                @update:model-value="val => setCompatBool('supportsReasoningEffort', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">上游返回 finish_reason (supportsFinishReason)</div>
-                <div class="text-[11px] text-muted-foreground">设为关闭则在流结束时由 Pi 自动推断</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>上游返回 finish_reason (supportsFinishReason)</span>
+                  <FieldDocButton field="supportsFinishReason" title="上游返回 finish_reason" />
+                </div>
+                <div class="text-[11px] text-muted-foreground">设为关闭则在流结束时由 Pi 自动推断 (防丢 finish_reason 报错)</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsFinishReason"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsFinishReason')"
+                :fallback-value="getKernelCompatDefault('supportsFinishReason')"
+                @update:model-value="val => setCompatBool('supportsFinishReason', val)"
               />
             </div>
 
@@ -454,81 +489,117 @@
               Pi Agent 原生兼容性选项
             </div>
 
+
             <!-- New GPT-5.4 / GPT-5.6 features -->
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">显式提示词缓存模式 (supportsExplicitPromptCacheMode)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>显式提示词缓存模式 (supportsExplicitPromptCacheMode)</span>
+                  <FieldDocButton field="supportsExplicitPromptCacheMode" title="显式提示词缓存模式" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">GPT-5.6 专属显式声明提示词缓存机制</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsExplicitPromptCacheMode"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsExplicitPromptCacheMode')"
+                :fallback-value="getKernelCompatDefault('supportsExplicitPromptCacheMode')"
+                @update:model-value="val => setCompatBool('supportsExplicitPromptCacheMode', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">扩展附加工具 (supportsAdditionalTools)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>扩展附加工具 (supportsAdditionalTools)</span>
+                  <FieldDocButton field="supportsAdditionalTools" title="扩展附加工具" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">支持下游接入附加扩展工具声明</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsAdditionalTools"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsAdditionalTools')"
+                :fallback-value="getKernelCompatDefault('supportsAdditionalTools')"
+                @update:model-value="val => setCompatBool('supportsAdditionalTools', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">内置工具搜索 (supportsToolSearch)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>内置工具搜索 (supportsToolSearch)</span>
+                  <FieldDocButton field="supportsToolSearch" title="内置工具搜索" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">允许模型在大量工具集上自动搜索</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsToolSearch"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsToolSearch')"
+                :fallback-value="getKernelCompatDefault('supportsToolSearch')"
+                @update:model-value="val => setCompatBool('supportsToolSearch', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">工具结果需附带 name (requiresToolResultName)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>工具结果需附带 name (requiresToolResultName)</span>
+                  <FieldDocButton field="requiresToolResultName" title="工具结果需附带 name" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">role: "tool" 消息是否必须携带 name 字段</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.requiresToolResultName"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('requiresToolResultName')"
+                :fallback-value="getKernelCompatDefault('requiresToolResultName')"
+                @update:model-value="val => setCompatBool('requiresToolResultName', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">工具后插入空 Assistant (requiresAssistantAfterToolResult)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>工具后插入空 Assistant (requiresAssistantAfterToolResult)</span>
+                  <FieldDocButton field="requiresAssistantAfterToolResult" title="工具后插入空 Assistant" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">某些严格中转站要求工具结果后附带一条空消息</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.requiresAssistantAfterToolResult"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('requiresAssistantAfterToolResult')"
+                :fallback-value="getKernelCompatDefault('requiresAssistantAfterToolResult')"
+                @update:model-value="val => setCompatBool('requiresAssistantAfterToolResult', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">DeepSeek 空思考内容补全 (requiresReasoningContent)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>DeepSeek 空思考内容补全 (requiresReasoningContent)</span>
+                  <FieldDocButton field="requiresReasoningContentOnAssistantMessages" title="DeepSeek 空思考内容补全" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">回放历史 assistant 消息时附带空 reasoning_content</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.requiresReasoningContentOnAssistantMessages"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('requiresReasoningContentOnAssistantMessages')"
+                :fallback-value="getKernelCompatDefault('requiresReasoningContentOnAssistantMessages')"
+                @update:model-value="val => setCompatBool('requiresReasoningContentOnAssistantMessages', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">思考内容转为普通文本 (requiresThinkingAsText)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>思考内容转为普通文本 (requiresThinkingAsText)</span>
+                  <FieldDocButton field="requiresThinkingAsText" title="思考内容转为普通文本" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">强制将思考链转换为纯文本回放</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.requiresThinkingAsText"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('requiresThinkingAsText')"
+                :fallback-value="getKernelCompatDefault('requiresThinkingAsText')"
+                @update:model-value="val => setCompatBool('requiresThinkingAsText', val)"
               />
             </div>
 
@@ -537,58 +608,83 @@
               Anthropic / Claude 原生适配
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">急切工具流式 (supportsEagerToolInputStreaming)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>急切工具流式 (supportsEagerToolInputStreaming)</span>
+                  <FieldDocButton field="supportsEagerToolInputStreaming" title="急切工具流式" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">设为关闭会自动回退使用 2025-05-14 Beta 兼容头</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsEagerToolInputStreaming"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsEagerToolInputStreaming')"
+                :fallback-value="getKernelCompatDefault('supportsEagerToolInputStreaming')"
+                @update:model-value="val => setCompatBool('supportsEagerToolInputStreaming', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">支持 1 小时长缓存 (supportsLongCacheRetention)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>支持 1 小时长缓存 (supportsLongCacheRetention)</span>
+                  <FieldDocButton field="supportsLongCacheRetention" title="支持 1 小时长缓存" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">在 cache_control 中启用 ttl: "1h"</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsLongCacheRetention"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsLongCacheRetention')"
+                :fallback-value="getKernelCompatDefault('supportsLongCacheRetention')"
+                @update:model-value="val => setCompatBool('supportsLongCacheRetention', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">允许空签名 (allowEmptySignature)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>允许空签名 (allowEmptySignature)</span>
+                  <FieldDocButton field="allowEmptySignature" title="允许空签名" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">允许第三方 Claude 代理返回空 signature 回放</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.allowEmptySignature"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('allowEmptySignature')"
+                :fallback-value="getKernelCompatDefault('allowEmptySignature')"
+                @update:model-value="val => setCompatBool('allowEmptySignature', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">严格模式 (supportsStrictTools)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>严格模式 (supportsStrictTools)</span>
+                  <FieldDocButton field="supportsStrictTools" title="严格模式" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">启用严格的 JSON Schema 工具格式校验</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsStrictTools"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsStrictTools')"
+                :fallback-value="getKernelCompatDefault('supportsStrictTools')"
+                @update:model-value="val => setCompatBool('supportsStrictTools', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1">
+            <div class="flex items-center justify-between py-1.5">
               <div>
-                <div class="text-xs text-foreground">动态工具延迟引用 (supportsToolReferences)</div>
+                <div class="text-xs text-foreground flex items-center">
+                  <span>动态工具延迟引用 (supportsToolReferences)</span>
+                  <FieldDocButton field="supportsToolReferences" title="动态工具延迟引用" />
+                </div>
                 <div class="text-[11px] text-muted-foreground">支持 Claude 原生的动态延迟工具引用机制</div>
               </div>
-              <Switch
-                v-model="drawerStore.editingProvider.compat.supportsToolReferences"
-                @change="() => { onFieldModified(); handleAutoSave(); }"
+              <TriStateSegment
+                type="provider"
+                :model-value="getCompatBool('supportsToolReferences')"
+                :fallback-value="getKernelCompatDefault('supportsToolReferences')"
+                @update:model-value="val => setCompatBool('supportsToolReferences', val)"
               />
             </div>
           </div>
@@ -607,8 +703,11 @@ import Sheet from "../../../components/ui/Sheet.vue";
 import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";
+import TriStateSegment from "../../../components/ui/TriStateSegment.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
 import FieldDocButton from "../../../components/ui/FieldDocButton.vue";
+import { getKernelCompatDefault } from "../../../utils/effective-config.js";
+import type { ProviderCompatibilityConfig } from "../../../types/index.js";
 
 const drawerStore = useDrawerStore();
 const providerStore = useProviderStore();
@@ -616,6 +715,25 @@ const presetsStore = usePresetsStore();
 
 const showPatches = ref(false);
 const showAdvancedCompat = ref(false);
+
+function getCompatBool(field: keyof ProviderCompatibilityConfig): boolean | undefined {
+  const val = drawerStore.editingProvider?.compat?.[field];
+  return typeof val === "boolean" ? val : undefined;
+}
+
+function setCompatBool(field: keyof ProviderCompatibilityConfig, val: boolean | undefined) {
+  if (!drawerStore.editingProvider) return;
+  if (!drawerStore.editingProvider.compat) {
+    drawerStore.editingProvider.compat = {};
+  }
+  if (val === undefined) {
+    delete (drawerStore.editingProvider.compat as any)[field];
+  } else {
+    (drawerStore.editingProvider.compat as any)[field] = val;
+  }
+  onFieldModified();
+  handleAutoSave();
+}
 
 onMounted(() => {
   presetsStore.loadIndex();
@@ -682,6 +800,7 @@ function handleAutoSave() {
   if (p.oauth === "") delete p.oauth;
   if (p.env && Object.keys(p.env).length === 0) delete p.env;
   if (p.headers && Object.keys(p.headers).length === 0) delete p.headers;
+  if (p.compat && Object.keys(p.compat).length === 0) delete p.compat;
 
   if (drawerStore.drawerType === "provider-add") {
     const exists = providerStore.providers.find((item) => item.id === p.id);

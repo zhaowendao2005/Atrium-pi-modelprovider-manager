@@ -28,7 +28,8 @@ function devCorsProxyPlugin(): Plugin {
               forwardHeaders[k] = Array.isArray(v) ? v[0] : v;
             }
           }
-          forwardHeaders["User-Agent"] = "Pi-ModelProvider-Manager/1.0";
+          forwardHeaders["User-Agent"] =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
           forwardHeaders["Accept"] = "application/json";
 
           const proxyReq = client.request(

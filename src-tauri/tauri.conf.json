@@ -28,6 +28,9 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": false,
+    "resources": {
+      "templates/test_tasks": "templates/test_tasks"
+    }
   }
 }

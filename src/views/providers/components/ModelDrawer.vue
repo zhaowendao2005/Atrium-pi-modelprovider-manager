@@ -605,17 +605,19 @@
           </button>
         </div>
 
-        <div v-if="showPatches" class="flex flex-col gap-1.5 bg-muted/20 p-3 rounded-xl">
-          <label class="text-xs font-medium text-foreground flex items-center">
-            <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
-            <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
-          </label>
-          <Select
-            size="sm"
-            class="w-full"
-            :model-value="getTriStateMode('omitResponsesReasoningStatus')"
-            :options="triStateSelectOptions"
-            @update:model-value="val => setTriStateMode('omitResponsesReasoningStatus', val)"
+        <div v-if="showPatches" class="flex items-center justify-between py-1.5 bg-muted/20 p-3 rounded-xl">
+          <div>
+            <div class="text-xs font-medium text-foreground flex items-center">
+              <span>过滤 Responses 思考状态 (omitResponsesReasoningStatus)</span>
+              <FieldDocButton field="omitResponsesReasoningStatus" title="过滤 Responses 思考状态" />
+            </div>
+            <div class="text-[11px] text-muted-foreground">从上下文重放的 reasoning 块中移除 output-only 字段 'status'</div>
+          </div>
+          <TriStateSegment
+            type="model"
+            :model-value="getModelCompatBool('omitResponsesReasoningStatus')"
+            :fallback-value="getModelCompatFallback('omitResponsesReasoningStatus')"
+            @update:model-value="val => setModelCompatBool('omitResponsesReasoningStatus', val)"
           />
         </div>
       </div>
@@ -690,214 +692,276 @@
               细粒度特性开关覆盖 (留空即继承提供商)
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>Developer 角色 (supportsDeveloperRole)</span>
-                <FieldDocButton field="supportsDeveloperRole" title="支持 Developer 角色" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsDeveloperRole')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsDeveloperRole', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>上游返回 finish_reason (supportsFinishReason)</span>
+                  <FieldDocButton field="supportsFinishReason" title="上游返回 finish_reason" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">关闭则在流结束时由 Pi 自动推断 (防丢 finish_reason 报错)</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsFinishReason')"
+                :fallback-value="getModelCompatFallback('supportsFinishReason')"
+                @update:model-value="val => setModelCompatBool('supportsFinishReason', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>Reasoning Effort 传递 (supportsReasoningEffort)</span>
-                <FieldDocButton field="supportsReasoningEffort" title="Reasoning Effort 传递" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsReasoningEffort')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsReasoningEffort', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>流式包含 Token 统计 (supportsUsageInStreaming)</span>
+                  <FieldDocButton field="supportsUsageInStreaming" title="流式包含 Token 统计" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">发送 stream_options: { include_usage: true }</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsUsageInStreaming')"
+                :fallback-value="getModelCompatFallback('supportsUsageInStreaming')"
+                @update:model-value="val => setModelCompatBool('supportsUsageInStreaming', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>自适应思考 (forceAdaptiveThinking)</span>
-                <FieldDocButton field="forceAdaptiveThinking" title="强制自适应思考" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('forceAdaptiveThinking')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('forceAdaptiveThinking', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>支持 Developer 角色 (supportsDeveloperRole)</span>
+                  <FieldDocButton field="supportsDeveloperRole" title="支持 Developer 角色" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">设为关闭则自动回退为 system 角色</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsDeveloperRole')"
+                :fallback-value="getModelCompatFallback('supportsDeveloperRole')"
+                @update:model-value="val => setModelCompatBool('supportsDeveloperRole', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>允许空思考签名 (allowEmptySignature)</span>
-                <FieldDocButton field="allowEmptySignature" title="允许空思考签名" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('allowEmptySignature')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('allowEmptySignature', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>发送 reasoning_effort (supportsReasoningEffort)</span>
+                  <FieldDocButton field="supportsReasoningEffort" title="发送 reasoning_effort" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">是否向下游发送 reasoning_effort 推理强度</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsReasoningEffort')"
+                :fallback-value="getModelCompatFallback('supportsReasoningEffort')"
+                @update:model-value="val => setModelCompatBool('supportsReasoningEffort', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>自适应思考 (forceAdaptiveThinking)</span>
+                  <FieldDocButton field="forceAdaptiveThinking" title="强制自适应思考" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">强制使用 Claude 3.7+ 的 adaptive thinking 协议</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('forceAdaptiveThinking')"
+                :fallback-value="getModelCompatFallback('forceAdaptiveThinking')"
+                @update:model-value="val => setModelCompatBool('forceAdaptiveThinking', val)"
+              />
+            </div>
+
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>允许空思考签名 (allowEmptySignature)</span>
+                  <FieldDocButton field="allowEmptySignature" title="允许空思考签名" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">允许第三方 Claude 代理返回空 signature 回放</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('allowEmptySignature')"
+                :fallback-value="getModelCompatFallback('allowEmptySignature')"
+                @update:model-value="val => setModelCompatBool('allowEmptySignature', val)"
               />
             </div>
 
             <!-- New GPT-5.4 / GPT-5.6 Tri-state Switches -->
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>显式提示词缓存 (supportsExplicitPromptCacheMode)</span>
-                <FieldDocButton field="supportsExplicitPromptCacheMode" title="显式提示词缓存" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsExplicitPromptCacheMode')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsExplicitPromptCacheMode', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>显式提示词缓存 (supportsExplicitPromptCacheMode)</span>
+                  <FieldDocButton field="supportsExplicitPromptCacheMode" title="显式提示词缓存" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">GPT-5.6 专属显式声明提示词缓存机制</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsExplicitPromptCacheMode')"
+                :fallback-value="getModelCompatFallback('supportsExplicitPromptCacheMode')"
+                @update:model-value="val => setModelCompatBool('supportsExplicitPromptCacheMode', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>扩展附加工具 (supportsAdditionalTools)</span>
-                <FieldDocButton field="supportsAdditionalTools" title="扩展附加工具" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsAdditionalTools')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsAdditionalTools', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>扩展附加工具 (supportsAdditionalTools)</span>
+                  <FieldDocButton field="supportsAdditionalTools" title="扩展附加工具" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">支持下游接入附加扩展工具声明</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsAdditionalTools')"
+                :fallback-value="getModelCompatFallback('supportsAdditionalTools')"
+                @update:model-value="val => setModelCompatBool('supportsAdditionalTools', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>内置工具搜索 (supportsToolSearch)</span>
-                <FieldDocButton field="supportsToolSearch" title="内置工具搜索" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsToolSearch')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsToolSearch', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>内置工具搜索 (supportsToolSearch)</span>
+                  <FieldDocButton field="supportsToolSearch" title="内置工具搜索" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">允许模型在大量工具集上自动搜索</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsToolSearch')"
+                :fallback-value="getModelCompatFallback('supportsToolSearch')"
+                @update:model-value="val => setModelCompatBool('supportsToolSearch', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>工具必须含 Name (requiresToolResultName)</span>
-                <FieldDocButton field="requiresToolResultName" title="工具返回必须附带 Name" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('requiresToolResultName')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('requiresToolResultName', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>工具必须含 Name (requiresToolResultName)</span>
+                  <FieldDocButton field="requiresToolResultName" title="工具返回必须附带 Name" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">role: "tool" 消息是否必须携带 name 字段</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('requiresToolResultName')"
+                :fallback-value="getModelCompatFallback('requiresToolResultName')"
+                @update:model-value="val => setModelCompatBool('requiresToolResultName', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>工具后跟随 Assistant (requiresAssistantAfterToolResult)</span>
-                <FieldDocButton field="requiresAssistantAfterToolResult" title="工具返回后强制跟随 Assistant 消息" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('requiresAssistantAfterToolResult')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('requiresAssistantAfterToolResult', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>工具后跟随 Assistant (requiresAssistantAfterToolResult)</span>
+                  <FieldDocButton field="requiresAssistantAfterToolResult" title="工具返回后强制跟随 Assistant 消息" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">某些严格中转站要求工具结果后附带一条空消息</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('requiresAssistantAfterToolResult')"
+                :fallback-value="getModelCompatFallback('requiresAssistantAfterToolResult')"
+                @update:model-value="val => setModelCompatBool('requiresAssistantAfterToolResult', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>Assistant 含推理字段 (requiresReasoningContentOnAssistantMessages)</span>
-                <FieldDocButton field="requiresReasoningContentOnAssistantMessages" title="Assistant 消息必须包含推理字段" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('requiresReasoningContentOnAssistantMessages')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('requiresReasoningContentOnAssistantMessages', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>Assistant 含推理字段 (requiresReasoningContentOnAssistantMessages)</span>
+                  <FieldDocButton field="requiresReasoningContentOnAssistantMessages" title="Assistant 消息必须包含推理字段" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">回放历史 assistant 消息时附带空 reasoning_content</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('requiresReasoningContentOnAssistantMessages')"
+                :fallback-value="getModelCompatFallback('requiresReasoningContentOnAssistantMessages')"
+                @update:model-value="val => setModelCompatBool('requiresReasoningContentOnAssistantMessages', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>思考内容转文本 (requiresThinkingAsText)</span>
-                <FieldDocButton field="requiresThinkingAsText" title="思考内容转为普通文本" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('requiresThinkingAsText')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('requiresThinkingAsText', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>思考内容转文本 (requiresThinkingAsText)</span>
+                  <FieldDocButton field="requiresThinkingAsText" title="思考内容转为普通文本" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">强制将思考链转换为纯文本回放</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('requiresThinkingAsText')"
+                :fallback-value="getModelCompatFallback('requiresThinkingAsText')"
+                @update:model-value="val => setModelCompatBool('requiresThinkingAsText', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>工具即时流式解析 (supportsEagerToolInputStreaming)</span>
-                <FieldDocButton field="supportsEagerToolInputStreaming" title="工具输入即时流式解析" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsEagerToolInputStreaming')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsEagerToolInputStreaming', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>工具即时流式解析 (supportsEagerToolInputStreaming)</span>
+                  <FieldDocButton field="supportsEagerToolInputStreaming" title="工具输入即时流式解析" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">关闭则回退使用 2025-05-14 Beta 兼容头</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsEagerToolInputStreaming')"
+                :fallback-value="getModelCompatFallback('supportsEagerToolInputStreaming')"
+                @update:model-value="val => setModelCompatBool('supportsEagerToolInputStreaming', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>1 小时长缓存 (supportsLongCacheRetention)</span>
-                <FieldDocButton field="supportsLongCacheRetention" title="支持 1 小时长缓存" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsLongCacheRetention')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsLongCacheRetention', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>1 小时长缓存 (supportsLongCacheRetention)</span>
+                  <FieldDocButton field="supportsLongCacheRetention" title="支持 1 小时长缓存" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">在 cache_control 中启用 ttl: "1h"</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsLongCacheRetention')"
+                :fallback-value="getModelCompatFallback('supportsLongCacheRetention')"
+                @update:model-value="val => setModelCompatBool('supportsLongCacheRetention', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>严格模式 (supportsStrictTools)</span>
-                <FieldDocButton field="supportsStrictTools" title="严格模式" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsStrictTools')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsStrictTools', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>严格模式 (supportsStrictTools)</span>
+                  <FieldDocButton field="supportsStrictTools" title="严格模式" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">启用严格的 JSON Schema 工具格式校验</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsStrictTools')"
+                :fallback-value="getModelCompatFallback('supportsStrictTools')"
+                @update:model-value="val => setModelCompatBool('supportsStrictTools', val)"
               />
             </div>
 
-            <div class="flex items-center justify-between py-1 text-xs">
-              <span class="flex items-center">
-                <span>动态工具延迟引用 (supportsToolReferences)</span>
-                <FieldDocButton field="supportsToolReferences" title="动态工具延迟引用" />
-              </span>
-              <Select
-                size="sm"
-                class="w-32"
-                :model-value="getTriStateMode('supportsToolReferences')"
-                :options="triStateSelectOptions"
-                @update:model-value="val => setTriStateMode('supportsToolReferences', val)"
+            <div class="flex items-center justify-between py-1.5 text-xs">
+              <div>
+                <span class="flex items-center font-medium text-foreground">
+                  <span>动态工具延迟引用 (supportsToolReferences)</span>
+                  <FieldDocButton field="supportsToolReferences" title="动态工具延迟引用" />
+                </span>
+                <div class="text-[11px] text-muted-foreground">支持 Claude 原生的动态延迟工具引用机制</div>
+              </div>
+              <TriStateSegment
+                type="model"
+                :model-value="getModelCompatBool('supportsToolReferences')"
+                :fallback-value="getModelCompatFallback('supportsToolReferences')"
+                @update:model-value="val => setModelCompatBool('supportsToolReferences', val)"
               />
             </div>
           </div>
@@ -913,11 +977,12 @@ import type { ThinkingLevel, ModelSchema } from "../../../types/index.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import { useProviderStore } from "../../../stores/provider.js";
 import { usePresetsStore } from "../../../stores/presets.js";
-import { resolveEffectiveModelConfig } from "../../../utils/effective-config.js";
+import { resolveEffectiveModelConfig, getInheritedCompatFallback } from "../../../utils/effective-config.js";
 import Sheet from "../../../components/ui/Sheet.vue";
 import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";
+import TriStateSegment from "../../../components/ui/TriStateSegment.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
 import ModelPresetCascadeSelect from "../../../components/ui/ModelPresetCascadeSelect.vue";
 import FieldDocButton from "../../../components/ui/FieldDocButton.vue";
@@ -1102,11 +1167,6 @@ const thinkingLevelModeOptions: SelectOption[] = [
   { label: "禁用此档位 (null)", value: "disabled" },
 ];
 
-const triStateSelectOptions: SelectOption[] = [
-  { label: "继承提供商", value: "inherit" },
-  { label: "开启 (true)", value: "true" },
-  { label: "关闭 (false)", value: "false" },
-];
 
 function onModelCompatFieldChange(field: string, val: unknown) {
   if (!drawerStore.editingModel) return;
@@ -1137,6 +1197,30 @@ function setTriStateMode(field: string, val: string) {
     delete (drawerStore.editingModel.compat as any)[field];
   } else {
     (drawerStore.editingModel.compat as any)[field] = val === "true";
+  }
+  onFieldModified();
+  handleAutoSave();
+}
+
+function getModelCompatBool(field: string): boolean | undefined {
+  const compat = drawerStore.editingModel?.compat;
+  if (!compat || (compat as any)[field] === undefined) return undefined;
+  return Boolean((compat as any)[field]);
+}
+
+function getModelCompatFallback(field: string): boolean {
+  return getInheritedCompatFallback(parentProvider.value?.compat, field);
+}
+
+function setModelCompatBool(field: string, val: boolean | undefined) {
+  if (!drawerStore.editingModel) return;
+  if (!drawerStore.editingModel.compat) {
+    drawerStore.editingModel.compat = {};
+  }
+  if (val === undefined) {
+    delete (drawerStore.editingModel.compat as any)[field];
+  } else {
+    (drawerStore.editingModel.compat as any)[field] = val;
   }
   onFieldModified();
   handleAutoSave();

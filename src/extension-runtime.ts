@@ -168,9 +168,20 @@ export class PiExtensionRuntime {
       if (routed) routed.adapter.beforeRequest(event.payload, routed.request);
     });
     this.pi.on("before_provider_headers", (event: any, ctx: ExtensionContext) => {
+      // 1. 若上游未注入 User-Agent，兜底注入拟真 Chrome UA，防止 WAF 403 拦截
+      const headers = event.headers || {};
+      const hasUa = Object.keys(headers).some((k) => k.toLowerCase() === "user-agent");
+      if (!hasUa) {
+        event.headers["User-Agent"] =
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+      }
+
+      // 2. 会话链路跟踪
       if (this.settings.enableHeaderTrace) {
         const sid = ctx.sessionManager.getSessionId?.(); if (sid) event.headers["x-session-id"] = sid;
       }
+
+      // 3. Adapter 专用请求头注入 (如 Grok)
       const routed = this.contextFor(ctx, event);
       if (routed && routed.request.sessionId) routed.adapter.beforeHeaders(event.headers, routed.request);
     });

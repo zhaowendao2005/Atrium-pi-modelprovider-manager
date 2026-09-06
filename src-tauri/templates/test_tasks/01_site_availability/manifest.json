@@ -1,0 +1,9 @@
+{
+  "id": "01_site_availability",
+  "name": "环境可用性自检 (Availability)",
+  "description": "验证沙箱目录内的 skills.md 规范与内置工具读写能力",
+  "category": "availability",
+  "order": 1,
+  "allow_net": false,
+  "expected_outputs": ["test_log.json", "test_summary.txt"]
+}

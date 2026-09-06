@@ -2,6 +2,20 @@ use dirs::home_dir;
 use std::fs;
 use std::path::PathBuf;
 
+/// 资源目录：优先使用 Tauri 注入的资源路径，回退到 exe 同级目录。
+pub fn get_resource_dir() -> Result<PathBuf, String> {
+    if let Ok(dir) = std::env::var("PI_MODEL_MANAGER_RESOURCE_DIR") {
+        return Ok(PathBuf::from(dir));
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return Ok(dir.to_path_buf());
+        }
+    }
+    Err("Cannot resolve resource directory".into())
+}
+
 pub fn is_development() -> bool {
     match std::env::var("PI_MODEL_MANAGER_ENV").as_deref() {
         Ok("development") => true,

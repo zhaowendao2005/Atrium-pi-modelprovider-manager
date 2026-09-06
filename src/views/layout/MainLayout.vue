@@ -30,17 +30,20 @@ import { useNavigationStore } from "../../stores/windows/navigation.js";
 import { useProviderStore } from "../../stores/provider.js";
 import { useSettingsStore } from "../../stores/settings.js";
 import { usePresetsStore } from "../../stores/presets.js";
+import { useTestingStore } from "../../stores/testing.js";
 
 const navStore = useNavigationStore();
 const providerStore = useProviderStore();
 const settingsStore = useSettingsStore();
 const presetsStore = usePresetsStore();
+const testingStore = useTestingStore();
 
 onMounted(async () => {
   try {
     await settingsStore.init();
     await providerStore.init();
     await presetsStore.loadIndex();
+    await testingStore.loadTasks();
   } catch (err) {
     console.error("[MainLayout] SQLite initialization failed:", err);
   }

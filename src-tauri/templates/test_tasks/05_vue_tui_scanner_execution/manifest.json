@@ -1,0 +1,15 @@
+{
+  "id": "05_vue_tui_scanner_execution",
+  "name": "Vue TUI 扫描器计划执行 (Plan Execution)",
+  "description": "离线沙箱环境提供计划文档与 vue-tui 资料，让 Agent 完成 TUI 程序开发",
+  "category": "plan-execution",
+  "order": 5,
+  "allow_net": false,
+  "expected_outputs": [
+    "test_log.json",
+    "test_summary.txt",
+    "output/src/main.ts",
+    "output/src/app.vue",
+    "output/package.json"
+  ]
+}

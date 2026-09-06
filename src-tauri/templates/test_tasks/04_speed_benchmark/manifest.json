@@ -1,0 +1,9 @@
+{
+  "id": "04_speed_benchmark",
+  "name": "本地执行基准测速 (Speed Benchmark)",
+  "description": "执行本地基础文件与命令操作，测量执行耗时与吞吐",
+  "category": "speed",
+  "order": 4,
+  "allow_net": false,
+  "expected_outputs": ["test_results/speed_test.txt", "test_summary.txt"]
+}

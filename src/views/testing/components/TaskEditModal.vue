@@ -131,6 +131,7 @@ const categoryOptions: SelectOption[] = [
   { label: "深度推理思维链 (Reasoning)", value: "reasoning" },
   { label: "多工具链调用 (Tools)", value: "tools" },
   { label: "本地基准测速 (Speed)", value: "speed" },
+  { label: "计划执行测试 (Plan Execution)", value: "plan-execution" },
   { label: "自定义测试场景 (Custom)", value: "custom" },
 ];
 
