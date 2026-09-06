@@ -4,8 +4,7 @@
 mod service;
 
 use rusqlite::Connection;
-use std::fs::{File, OpenOptions};
-use std::path::PathBuf;
+use tauri::Manager;
 use std::sync::Mutex;
 
 use service::config::{db_get_path, get_storage_dir};
@@ -18,35 +17,27 @@ use service::test_runner::{
     abort_pi_agent_rpc, create_test_workspace, open_workspace_in_explorer, start_pi_agent_rpc,
 };
 
-struct WindowInstanceLock {
-    path: PathBuf,
-    _file: File,
-}
-
-impl WindowInstanceLock {
-    fn acquire(path: PathBuf) -> Option<Self> {
-        let file = OpenOptions::new().write(true).create_new(true).open(&path).ok()?;
-        Some(Self { path, _file: file })
-    }
-}
-
-impl Drop for WindowInstanceLock {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
-    }
-}
-
 fn main() {
     let storage_dir = get_storage_dir().expect("Failed to get storage directory");
-    let _instance_lock = match WindowInstanceLock::acquire(storage_dir.join("manager-window.lock")) {
-        Some(lock) => lock,
-        None => return,
-    };
     let db_path = storage_dir.join("manager.db");
     let conn = Connection::open(&db_path).expect("Failed to open SQLite database");
     init_sqlite_db(&conn).expect("Failed to initialize SQLite schema");
 
+    let mut context = tauri::generate_context!();
+    if service::config::is_development() {
+        context.config_mut().identifier.push_str(".dev");
+        for window in &mut context.config_mut().app.windows {
+            window.title.push_str(" [Development]");
+        }
+    }
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .manage(DbState {
             conn: Mutex::new(conn),
         })
@@ -74,6 +65,6 @@ fn main() {
             abort_pi_agent_rpc,
             open_workspace_in_explorer
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }

@@ -14,6 +14,15 @@
 
 ---
 
+## 环境与持久化隔离
+
+- 生产默认使用 `~/.pi/pi-modelprovider-manager-data/`。
+- 开发使用 `~/.pi/pi-modelprovider-manager-data/dev-cache/`，数据库、模板、备份、导出及测试工作区均隔离。不自动复制生产配置或密钥。
+- `pnpm dev` 自动设置 `PI_MODEL_MANAGER_ENV=development` 并生成开发模板；直接 `tauri dev` 的调试程序默认也使用开发数据。
+- 临时测试 Extension 时，在启动 Pi 的终端中设置 `PI_MODEL_MANAGER_ENV=development`；不设置则使用生产数据。Extension 启动的桌面程序继承同一环境。
+- 默认 Tab 按最近成功选择时间降序排列，未使用模型保持配置顺序。记录存储在各自 `manager.db` 的 `app_meta.model_manager_recent_usage`，最多保留 100 个模型；搜索时匹配相关性优先。记录范围为本扩展选择器，不代表全部 Pi 模型请求历史。
+- 回归测试：`node scripts/test-runtime.mjs`。
+
 ## 📦 最终打包产物结构 (`dist/`)
 
 运行 `pnpm build` 命令将一键构建并将 **插件包产物** 与 **Tauri 二进制可执行文件** 输出到 `dist/` 目录：
@@ -63,4 +72,4 @@ pi -e ./dist/pi-modelprovider-manager/index.js
 - **项目级路径**：`.pi/extensions/pi-modelprovider-manager/`
 
 ### 方式 3：运行桌面管理程序
-直接双击运行 `./dist/pi-modelprovider-manager/bin/pi-modelprovider-manager.exe` 打开可视化配置管理器；在 Pi Agent 内执行 `/model-manager` 也会启动同一个管理器。管理器使用单实例锁，重复执行不会创建第二个窗口。
+直接双击运行 `./dist/pi-modelprovider-manager/bin/pi-modelprovider-manager.exe` 打开可视化配置管理器；在 Pi Agent 内执行 `/model-manager` 也会启动同一个管理器。管理器使用 Tauri 单实例插件，重复执行会恢复最小化窗口并将其置于前台，不永久置顶。开发和生产各自只允许一个窗口。

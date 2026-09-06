@@ -11,7 +11,7 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "node scripts/generate-presets.mjs && pnpm build:ext && tauri dev",
+    "dev": "node scripts/dev.mjs",
     "dev:ui": "vite",
     "generate:presets": "node scripts/generate-presets.mjs",
     "clean": "rimraf dist",

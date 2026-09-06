@@ -1,5 +1,5 @@
 import type { DatabaseSync as DatabaseSyncType } from "node:sqlite";
-import * as os from "node:os";
+import { getRuntimeStorageDir } from "./utils/runtime-storage.js";
 import * as path from "node:path";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -10,7 +10,7 @@ import type { AppSettings, ModelInputType, ModelSchema, ProviderSchema } from ".
 import { adapterForPreset, resolveAdapterPolicy } from "./adapters/factory.js";
 import type { AdapterRequestContext } from "./adapters/types.js";
 import { ModelManagerComponent } from "./model-manager-ui.js";
-import { parseRecentModels, RECENT_MODELS_META_KEY, recordRecentModel } from "./model-manager-recent.js";
+import { parseRecentModels, RECENT_MODELS_META_KEY, recordRecentModel, recentKey } from "./model-manager-recent.js";
 import type { ModelManagerData, ModelManagerItem, RecentModelUse } from "./model-manager-types.js";
 
 const OVERFLOW_PATTERNS = [/context_length_exceeded/i, /maximum context length/i, /prompt is too long/i, /exceeds the context window/i, /token limit exceeded/i, /input tokens exceed/i];
@@ -34,7 +34,7 @@ export class PiExtensionRuntime {
 
   constructor(pi: ExtensionAPI) {
     this.pi = pi;
-    this.dbPath = path.join(os.homedir(), ".pi", "pi-modelprovider-manager-data", "manager.db");
+    this.dbPath = path.join(getRuntimeStorageDir(), "manager.db");
   }
 
   public async loadFromDb(): Promise<{ providers: ProviderSchema[]; settings: AppSettings }> {
@@ -63,6 +63,7 @@ export class PiExtensionRuntime {
         compat: json(row.compat_json), modelOverrides: json(row.model_overrides_json), appliedPreset: row.applied_preset ?? undefined,
         createdAt: row.created_at, updatedAt: row.updated_at, models: models.get(row.id) || [],
       }));
+      this.recentModels = [];
       const metaRows = db.prepare("SELECT key, value FROM app_meta").all() as Row[];
       const settings = { ...DEFAULT_SETTINGS } as AppSettings;
       for (const row of metaRows) {
@@ -186,7 +187,7 @@ export class PiExtensionRuntime {
   private buildModelManagerData(ctx: ExtensionContext): ModelManagerData {
     const current = (ctx as any).model as { provider?: string; id?: string } | undefined;
     const recent = this.recentModels;
-    const recentAt = new Map(recent.map((entry) => [`${entry.providerId}\0${entry.modelId}`, entry.usedAt]));
+    const recentAt = new Map(recent.map((entry) => [recentKey(entry.providerId, entry.modelId), entry.usedAt]));
     const items: ModelManagerItem[] = [];
     this.providers.forEach((provider, providerOrder) => {
       (provider.models || []).forEach((model, modelOrder) => {
@@ -198,7 +199,7 @@ export class PiExtensionRuntime {
           series: model.family || "Other",
           providerOrder,
           modelOrder,
-          usedAt: recentAt.get(`${provider.id}\\0${model.id}`),
+          usedAt: recentAt.get(recentKey(provider.id, model.id)),
           isCurrent: current?.provider === provider.id && current?.id === model.id,
           provider,
           model,
@@ -213,8 +214,11 @@ export class PiExtensionRuntime {
     const { DatabaseSync } = await import(sqliteModuleName);
     const db: DatabaseSyncType = new DatabaseSync(this.dbPath);
     try {
-      const next = recordRecentModel(this.recentModels, providerId, modelId);
+      db.exec("PRAGMA busy_timeout = 5000; BEGIN IMMEDIATE");
+      const row = db.prepare("SELECT value FROM app_meta WHERE key = ?").get(RECENT_MODELS_META_KEY) as Row | undefined;
+      const next = recordRecentModel(parseRecentModels(json(row?.value)), providerId, modelId);
       db.prepare("INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(RECENT_MODELS_META_KEY, JSON.stringify(next));
+      db.exec("COMMIT");
       this.recentModels = next;
     } finally { db.close(); }
   }
@@ -233,9 +237,13 @@ export class PiExtensionRuntime {
       return;
     }
     try {
-      const child = spawn(executable, [], { detached: true, stdio: "ignore", windowsHide: true });
-      child.unref();
-      ctx.ui.notify("Provider 管理器已启动；已有实例不会重复打开", "info");
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn(executable, [], { detached: true, stdio: "ignore", windowsHide: true,
+          env: { ...process.env, PI_MODEL_MANAGER_ENV: process.env.PI_MODEL_MANAGER_ENV === "development" ? "development" : "production" } });
+        child.once("error", reject);
+        child.once("spawn", () => { child.unref(); resolve(); });
+      });
+      ctx.ui.notify("已请求打开管理器；已有窗口将恢复并置于前台", "info");
     } catch (error) {
       ctx.ui.notify(`启动 Provider 管理器失败: ${error instanceof Error ? error.message : String(error)}`, "error");
     }
@@ -243,6 +251,7 @@ export class PiExtensionRuntime {
 
   private async openModelManager(ctx: ExtensionContext, initialQuery?: string): Promise<void> {
     if (!ctx.hasUI) { ctx.ui.notify("当前运行模式没有可用的 TUI", "warning"); return; }
+    await this.refreshSnapshot();
     await ctx.ui.custom((tui, theme, _keybindings, done) => new ModelManagerComponent(tui, theme, {
       getData: () => this.buildModelManagerData(ctx),
       onCancel: () => done(null),

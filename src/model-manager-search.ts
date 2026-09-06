@@ -58,7 +58,7 @@ export function scoreModel(query: string, item: ModelManagerItem): { score: Mode
 
 export function filterAndRankModels(query: string, items: ModelManagerItem[]): ModelManagerItem[] {
   const trimmed = query.trim();
-  if (!trimmed) return [...items];
+  if (!trimmed) return [...items].sort((a, b) => ((b.usedAt ?? 0) - (a.usedAt ?? 0)) || (a.providerOrder - b.providerOrder) || (a.modelOrder - b.modelOrder));
   return items
     .map((item, index) => ({ item, match: scoreModel(trimmed, item), index }))
     .filter((entry): entry is typeof entry & { match: NonNullable<typeof entry.match> } => Boolean(entry.match))

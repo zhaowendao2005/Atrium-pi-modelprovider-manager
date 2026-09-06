@@ -1,13 +1,13 @@
 import { syncPresetsAndSchemas } from "../src/utils/preset-extractor.ts";
 import path from "node:path";
-import os from "node:os";
+import { getRuntimeStorageDir } from "../src/utils/runtime-storage.ts";
 
 async function main() {
   console.log("====================================================");
   console.log("[generate:presets] 开始从 Pi 运行时提取官方预设与 Schema...");
   console.log("====================================================");
 
-  const targetDir = path.join(os.homedir(), ".pi", "pi-modelprovider-manager-data");
+  const targetDir = getRuntimeStorageDir();
 
   try {
     const result = await syncPresetsAndSchemas(targetDir);

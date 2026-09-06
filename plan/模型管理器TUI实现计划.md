@@ -994,9 +994,10 @@ pi-modelprovider-manager/
 
 全局只允许一个 Tauri 管理器进程/窗口：
 
-- Tauri 启动时在当前 SQLite 存储目录创建 `manager-window.lock`。
-- 锁已存在时立即退出，不创建第二个窗口。
-- 正常退出时删除锁文件。
+- 使用 Tauri single-instance 插件，替代易残留的锁文件。
+- 重复启动时恢复已有窗口并聚焦，不永久置顶。
+- 开发、生产使用不同应用标识，各环境最多一个窗口。
+- 开发数据（包括模板）放在 `dev-cache/`；生产继续使用原路径。`pnpm dev` 自动设置 `PI_MODEL_MANAGER_ENV=development`，Extension 默认生产，显式环境变量可切换。
 - Tauri 的窗口设置继续只保留一个主窗口。
 - Pi 中重复执行 `/model-manager` 不会产生第二个管理器进程。
 
