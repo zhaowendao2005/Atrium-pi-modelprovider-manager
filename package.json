@@ -29,6 +29,7 @@
     "publish:plugin": "npm publish ./dist/atrium-pi-modelprovider-manager --access public",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "ci:trigger": "node scripts/trigger-ci.mjs",
     "tauri": "tauri"
   },
   "publishConfig": {

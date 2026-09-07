@@ -6,6 +6,9 @@
 1. **Pi Agent 运行时扩展 (Extension)**：无缝挂载至 Pi Agent，提供底层请求钩子（Hooks）、多协议适配器（Adapters）、上下文溢出自动恢复、链路追踪以及终端快速切换器（TUI）；
 2. **桌面原生可视化工作台 (Tauri + Vue 3 + Tailwind CSS + Pinia)**：采用 Apple 极简设计范式，提供全流程模型管理、动态模型探测（`/v1/models`）、以及多模型同台竞技的**测试工作台（Test Arena）**。
 
+> 🌐 **在线文档站 (Docsify)**  
+> 📖 访问高清交互式官方文档（支持全局检索与侧边栏目录）：[https://zhaowendao2005.github.io/Atrium-pi-modelprovider-manager/#/](https://zhaowendao2005.github.io/Atrium-pi-modelprovider-manager/#/)
+
 ---
 
 ## ✨ 核心特性
@@ -37,7 +40,7 @@
 | **07** | [系统设置与持久化](docs/07-settings-and-maintenance.md) | SQLite 数据库结构、开发与生产环境隔离机制、数据备份与迁移 |
 | **08** | [常见问题与排错手册](docs/08-troubleshooting.md) | 常见网络报错、适配器异常、多实例聚焦故障速查表 |
 
-> 💡 **提示**：仓库推送后，可通过 GitHub Pages 在线浏览具备**全局实时检索**与**章节树**的高清文档站。
+> 💡 **在线查阅**：你也可以直接访问官方文档站进行全站检索与深度阅读：[👉 Atrium 官方文档站 (GitHub Pages)](https://zhaowendao2005.github.io/Atrium-pi-modelprovider-manager/#/)。
 
 ---
 
@@ -91,10 +94,20 @@ dist/atrium-pi-modelprovider-manager/
 
 ## 🚀 安装与使用方式
 
-### 方式 1：通过 npm / Pi 插件命令安装（发布后）
+### 方式 1：通过 npm / Pi 插件命令安装（推荐）
+
+本包已正式发布到 npm：[`atrium-pi-modelprovider-manager`](https://www.npmjs.com/package/atrium-pi-modelprovider-manager)
+
+你可以直接通过 `pi install` 命令一键安装：
 ```bash
+# 推荐：使用 Pi CLI 直接安装 npm 包
 pi install atrium-pi-modelprovider-manager
+
+# 或使用 npm / pnpm 全局/本地安装
+npm install atrium-pi-modelprovider-manager
 ```
+
+安装完成后，Pi Agent 将自动识别并启用本扩展。
 
 ### 方式 2：使用本地构建产物直接加载
 ```bash
