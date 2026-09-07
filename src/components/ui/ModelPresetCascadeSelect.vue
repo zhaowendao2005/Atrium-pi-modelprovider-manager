@@ -78,23 +78,26 @@
               @mouseenter="onHoverProvider(p.id)"
               @click="onSelectProvider(p.id)"
             >
-              <div class="flex flex-col min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <span class="truncate">{{ p.name }}</span>
+              <div class="flex items-center gap-2 min-w-0">
+                <ProviderLogo :provider="{ id: p.id, name: p.name }" :size="18" class="rounded-md shrink-0" />
+                <div class="flex flex-col min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="truncate">{{ p.name }}</span>
+                    <span
+                      v-if="isCurrentParentProvider(p.id)"
+                      class="px-1 py-0.2 text-[9px] rounded-md shrink-0"
+                      :class="activeProviderId === p.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium'"
+                    >
+                      当前
+                    </span>
+                  </div>
                   <span
-                    v-if="isCurrentParentProvider(p.id)"
-                    class="px-1 py-0.2 text-[9px] rounded-md shrink-0"
-                    :class="activeProviderId === p.id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium'"
+                    class="text-[10px] truncate"
+                    :class="activeProviderId === p.id ? 'text-primary-foreground/80' : 'text-muted-foreground'"
                   >
-                    当前
+                    {{ p.modelCount }} 个模型
                   </span>
                 </div>
-                <span
-                  class="text-[10px] truncate"
-                  :class="activeProviderId === p.id ? 'text-primary-foreground/80' : 'text-muted-foreground'"
-                >
-                  {{ p.modelCount }} 个模型
-                </span>
               </div>
 
               <!-- Chevron Right -->
@@ -164,23 +167,26 @@
               :class="isSelectedModel(m.id) ? 'bg-purple-500/15 border-purple-500/30' : ''"
               @click="onPickModel(m)"
             >
-              <div class="flex flex-col min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="font-medium text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400">
-                    {{ m.name || m.id }}
-                  </span>
-                  <!-- Reasoning Badge -->
-                  <span
-                    v-if="m.reasoning"
-                    class="px-1.5 py-0.2 text-[9px] rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium shrink-0"
-                  >
-                    思考
-                  </span>
-                </div>
+              <div class="flex items-center gap-2.5 min-w-0">
+                <ModelLogo :model="m" :size="22" class="shrink-0" />
+                <div class="flex flex-col min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                      {{ m.name || m.id }}
+                    </span>
+                    <!-- Reasoning Badge -->
+                    <span
+                      v-if="m.reasoning"
+                      class="px-1.5 py-0.2 text-[9px] rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium shrink-0"
+                    >
+                      思考
+                    </span>
+                  </div>
                 <div class="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5 truncate font-mono">
                   <span>{{ m.id }}</span>
                 </div>
               </div>
+            </div>
 
               <!-- Context Window & MaxTokens Meta -->
               <div class="flex flex-col items-end shrink-0 text-[10px] text-muted-foreground">
@@ -204,6 +210,8 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import type { ModelSchema, ProviderPresetDetails } from "../../types/index.js";
 import { usePresetsStore } from "../../stores/presets.js";
 import AppleScrollArea from "./AppleScrollArea.vue";
+import ProviderLogo from "./ProviderLogo.vue";
+import ModelLogo from "./ModelLogo.vue";
 
 const props = defineProps<{
   parentProviderId?: string;

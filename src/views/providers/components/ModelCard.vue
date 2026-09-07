@@ -3,13 +3,16 @@
     <div>
       <!-- Header: Name, Family, Actions -->
       <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0">
-          <h4 class="font-semibold text-sm text-foreground truncate">
-            {{ props.model.name || props.model.id }}
-          </h4>
-          <p class="text-[11px] font-mono text-muted-foreground truncate mt-0.5">
-            {{ props.model.id }}
-          </p>
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <ModelLogo :model="props.model" :size="32" />
+          <div class="min-w-0 flex-1">
+            <h4 class="font-semibold text-sm text-foreground truncate">
+              {{ props.model.name || props.model.id }}
+            </h4>
+            <p class="text-[11px] font-mono text-muted-foreground truncate mt-0.5">
+              {{ props.model.id }}
+            </p>
+          </div>
         </div>
 
         <!-- Actions -->
@@ -92,6 +95,7 @@
 
 <script setup lang="ts">
 import Badge from "../../../components/ui/Badge.vue";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 import type { ModelSchema } from "../../../types/index.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import { useProviderStore } from "../../../stores/provider.js";

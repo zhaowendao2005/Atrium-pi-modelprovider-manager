@@ -2,13 +2,8 @@
   <div class="group px-4 py-2.5 flex items-center justify-between border-t border-border/40 hover:bg-accent/40 transition-colors select-none">
     <!-- Left: Avatar + Model Name / ID -->
     <div class="flex items-center gap-3 min-w-0 flex-1">
-      <!-- Family / Model Avatar Circle (SVG) -->
-      <div
-        class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shadow-sm flex-shrink-0"
-        :class="avatarBgClass"
-      >
-        <span class="text-white tracking-tight">{{ avatarInitial }}</span>
-      </div>
+      <!-- Model Logo (with automatic fallback to Apple-styled initials) -->
+      <ModelLogo :model="props.model" :size="28" />
 
       <div class="flex items-baseline gap-2 min-w-0 flex-wrap">
         <span class="font-medium text-xs text-foreground truncate">
@@ -137,6 +132,7 @@ import { computed } from "vue";
 import type { ModelSchema } from "../../../types/index.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import { useProviderStore } from "../../../stores/provider.js";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 
 const props = defineProps<{
   model: ModelSchema;
@@ -158,27 +154,6 @@ const hasCostTiers = computed(() => {
   return !!props.model.cost?.tiers && props.model.cost.tiers.length > 0;
 });
 
-const avatarInitial = computed(() => {
-  const name = props.model.name || props.model.id;
-  if (name.toLowerCase().startsWith("claude")) return "C";
-  if (name.toLowerCase().startsWith("gpt") || name.toLowerCase().startsWith("o1") || name.toLowerCase().startsWith("o3")) return "G";
-  if (name.toLowerCase().startsWith("deepseek")) return "D";
-  if (name.toLowerCase().startsWith("qwen") || name.toLowerCase().startsWith("qwq")) return "Q";
-  if (name.toLowerCase().startsWith("gemini")) return "Ge";
-  if (name.toLowerCase().startsWith("mistral")) return "M";
-  if (name.toLowerCase().startsWith("llama")) return "L";
-  return name.slice(0, 2).toUpperCase();
-});
-
-const avatarBgClass = computed(() => {
-  const name = (props.model.name || props.model.id).toLowerCase();
-  if (name.includes("claude")) return "bg-gradient-to-tr from-amber-600 to-orange-400";
-  if (name.includes("gpt") || name.includes("o1") || name.includes("o3")) return "bg-gradient-to-tr from-emerald-600 to-teal-400";
-  if (name.includes("deepseek")) return "bg-gradient-to-tr from-blue-600 to-cyan-400";
-  if (name.includes("qwen") || name.includes("qwq")) return "bg-gradient-to-tr from-indigo-600 to-purple-400";
-  if (name.includes("gemini")) return "bg-gradient-to-tr from-blue-500 to-indigo-500";
-  return "bg-gradient-to-tr from-slate-600 to-slate-400";
-});
 
 function formatTokens(tokens: number) {
   if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;

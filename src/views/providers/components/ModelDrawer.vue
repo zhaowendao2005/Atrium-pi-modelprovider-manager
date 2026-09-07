@@ -69,9 +69,12 @@
 
       <!-- Basic Section -->
       <div class="flex flex-col gap-3.5">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          模型基础参数
-        </h4>
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            模型基础参数
+          </h4>
+          <ModelLogo :model="drawerStore.editingModel" :size="28" />
+        </div>
 
         <!-- ID with Real-Time Best Match Hint -->
         <div class="flex flex-col gap-1.5">
@@ -92,11 +95,7 @@
             class="mt-1 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between gap-2 transition-all animate-fadeIn"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span class="text-purple-600 dark:text-purple-400 flex-shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </span>
+              <ModelLogo :model="suggestedPresetModel" :size="24" />
               <div class="flex flex-col min-w-0">
                 <div class="text-xs font-semibold text-foreground truncate">
                   匹配官方预设: {{ suggestedPresetModel.name || suggestedPresetModel.id }}
@@ -985,6 +984,7 @@ import Switch from "../../../components/ui/Switch.vue";
 import TriStateSegment from "../../../components/ui/TriStateSegment.vue";
 import KeyValueEditor from "../../../components/ui/KeyValueEditor.vue";
 import ModelPresetCascadeSelect from "../../../components/ui/ModelPresetCascadeSelect.vue";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 import FieldDocButton from "../../../components/ui/FieldDocButton.vue";
 
 const drawerStore = useDrawerStore();

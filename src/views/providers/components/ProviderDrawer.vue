@@ -49,7 +49,12 @@
         </div>
 
         <!-- Combobox Select Preset -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2.5">
+          <ProviderLogo
+            :provider="{ id: selectedPresetId, appliedPreset: selectedPresetId }"
+            :size="32"
+            class="rounded-xl shadow-xs border border-border/60"
+          />
           <div class="relative flex-1">
             <Select
               :model-value="selectedPresetId"
@@ -65,9 +70,12 @@
 
       <!-- Basic Config Section -->
       <div class="flex flex-col gap-3.5">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          基础接入信息
-        </h4>
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            基础接入信息
+          </h4>
+          <ProviderLogo :provider="drawerStore.editingProvider" :size="24" class="rounded-md border border-border/40" />
+        </div>
 
         <!-- ID -->
         <div class="flex flex-col gap-1.5">
@@ -700,6 +708,7 @@ import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import { useProviderStore } from "../../../stores/provider.js";
 import { usePresetsStore } from "../../../stores/presets.js";
 import Sheet from "../../../components/ui/Sheet.vue";
+import ProviderLogo from "../../../components/ui/ProviderLogo.vue";
 import Input from "../../../components/ui/Input.vue";
 import Select, { type SelectOption } from "../../../components/ui/Select.vue";
 import Switch from "../../../components/ui/Switch.vue";

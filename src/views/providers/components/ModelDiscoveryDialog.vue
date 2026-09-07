@@ -267,6 +267,8 @@
                         </svg>
                       </div>
 
+                      <!-- Family Logo & Name -->
+                      <ModelLogo :model="{ id: grp.name, family: grp.name }" :size="18" class="rounded-sm" />
                       <span class="font-semibold text-xs text-foreground tracking-tight">
                         {{ grp.name }}
                       </span>
@@ -341,6 +343,9 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
+
+                      <!-- Model Logo -->
+                      <ModelLogo :model="{ id: model.id, name: model.name, family: grp.name }" :size="22" />
 
                       <!-- Model ID & Name -->
                       <div class="flex items-baseline gap-2 min-w-0 flex-wrap">
@@ -466,6 +471,7 @@ import { guessModelFamily, guessModelCapabilities, MODEL_FAMILY_ORDER } from "..
 import AppleScrollArea from "../../../components/ui/AppleScrollArea.vue";
 import Button from "../../../components/ui/Button.vue";
 import Badge from "../../../components/ui/Badge.vue";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 
 interface RawModelItem {
   id: string;

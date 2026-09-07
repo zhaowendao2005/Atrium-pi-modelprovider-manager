@@ -50,14 +50,17 @@
           ]"
           @click="providerStore.setActiveProvider(provider.id)"
         >
-          <!-- Left: Status dot + Title -->
-          <div class="flex items-center gap-2 min-w-0 flex-1">
-            <span
-              class="w-2 h-2 rounded-full flex-shrink-0"
-              :class="[
-                provider.enabled !== false ? 'bg-emerald-500' : 'bg-slate-400',
-              ]"
-            />
+          <!-- Left: Provider Logo with Status dot + Title -->
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="relative flex-shrink-0 flex items-center justify-center">
+              <ProviderLogo :provider="provider" :size="22" class="rounded-md shadow-2xs" />
+              <span
+                class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-card"
+                :class="[
+                  provider.enabled !== false ? 'bg-emerald-500' : 'bg-slate-400',
+                ]"
+              />
+            </div>
             <span class="font-medium text-xs text-foreground truncate">
               {{ provider.name || provider.id }}
             </span>
@@ -105,6 +108,7 @@ import { useProviderStore } from "../../../stores/provider.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
 import Button from "../../../components/ui/Button.vue";
 import Badge from "../../../components/ui/Badge.vue";
+import ProviderLogo from "../../../components/ui/ProviderLogo.vue";
 import AppleScrollArea from "../../../components/ui/AppleScrollArea.vue";
 import type { ApiProtocol } from "../../../types/index.js";
 

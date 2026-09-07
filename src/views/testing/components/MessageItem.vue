@@ -33,8 +33,13 @@
       class="flex gap-2.5 w-full min-w-0"
     >
       <!-- Assistant Avatar / Badge -->
-      <div class="w-7 h-7 rounded-xl bg-card border border-border/80 shadow-xs flex items-center justify-center flex-shrink-0 text-primary mt-0.5">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="w-7 h-7 rounded-xl bg-card border border-border/80 shadow-xs flex items-center justify-center flex-shrink-0 text-primary mt-0.5 overflow-hidden">
+        <ModelLogo
+          v-if="testingStore.selectedModelId"
+          :model="{ id: testingStore.selectedModelId }"
+          :size="26"
+        />
+        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       </div>
@@ -162,8 +167,12 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { UIMessage } from "../../../types/testing.js";
+import { useTestingStore } from "../../../stores/testing.js";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 import ReasoningBlock from "./ReasoningBlock.vue";
 import ToolInvocationItem from "./ToolInvocationItem.vue";
+
+const testingStore = useTestingStore();
 
 const props = defineProps<{
   message: UIMessage;

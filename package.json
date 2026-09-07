@@ -6,7 +6,11 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "files": [
-    "dist",
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/adapters/*.js",
+    "dist/adapters/*.d.ts",
+    "dist/bin",
     "README.md",
     "package.json"
   ],

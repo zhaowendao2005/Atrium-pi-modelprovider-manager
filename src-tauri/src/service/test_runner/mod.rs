@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{LazyLock, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 use tauri::Emitter;
 
 const GROK_CORE_MODULE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../dist/adapters/grok-core.js"));
@@ -22,6 +23,52 @@ struct ActiveProcess {
 }
 
 static ACTIVE_PROCESSES: LazyLock<Mutex<HashMap<String, ActiveProcess>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// 优雅终止 RPC 子进程：可选先发送 abort，随后关闭 stdin 触发 pi 自行退出，
+/// 超时后兜底强杀，避免残留僵尸进程与控制台窗口。
+fn graceful_terminate(mut proc: ActiveProcess, send_abort: bool) {
+    if send_abort {
+        let _ = proc.stdin.write_all(b"{\"type\": \"abort\"}\n");
+        let _ = proc.stdin.flush();
+    }
+    // 关闭 stdin 管道 => pi --mode rpc 收到 EOF 后执行 shutdown() 并 exit(0)
+    drop(proc.stdin);
+
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match proc.child.try_wait() {
+            Ok(Some(status)) => {
+                eprintln!("[test_runner] RPC 进程已优雅退出: {:?}", status);
+                break;
+            }
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = proc.child.kill();
+                    let _ = proc.child.wait();
+                    eprintln!("[test_runner] RPC 进程超时未退出，已强制终止");
+                    break;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(_) => break,
+        }
+    }
+}
+
+/// 任务完成后由 stdout 监听线程触发：从活跃表移除并优雅收尾。
+fn reap_session_process(session_id: &str) {
+    let proc = {
+        let mut lock = ACTIVE_PROCESSES.lock().unwrap();
+        lock.remove(session_id)
+    };
+    if let Some(proc) = proc {
+        eprintln!(
+            "[test_runner] [Session: {}] 任务完成，正在优雅关闭 RPC 进程",
+            session_id
+        );
+        graceful_terminate(proc, false);
+    }
+}
 
 /// 创建测试沙箱工作空间
 #[tauri::command]
@@ -228,13 +275,16 @@ export default function(pi) {{
         ext_path_str = ext_file.to_string_lossy().to_string();
     }
 
-    // Windows 平台调用 cmd.exe /C pi --mode rpc
+    // Windows 平台调用 cmd.exe /C pi --mode rpc，并用 CREATE_NO_WINDOW 隐藏控制台窗口
     #[cfg(target_os = "windows")]
-    let mut cmd = Command::new("cmd");
-    #[cfg(target_os = "windows")]
-    {
-        cmd.arg("/C").arg("pi");
-    }
+    let mut cmd = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let mut c = Command::new("cmd");
+        c.arg("/C").arg("pi");
+        c.creation_flags(CREATE_NO_WINDOW);
+        c
+    };
 
     #[cfg(not(target_os = "windows"))]
     let mut cmd = Command::new("pi");
@@ -379,9 +429,18 @@ export default function(pi) {{
                         "raw": trimmed
                     });
                     let _ = app_handle.emit("pi-rpc-event", unified_payload.to_string());
+
+                    // 检测到 agent_settled：本次任务全部完成，触发优雅收尾，
+                    // 关闭 RPC 进程并回收，避免残留进程与控制台窗口。
+                    if trimmed.contains("\"type\":\"agent_settled\"") {
+                        let reap_sid = sid_stdout.clone();
+                        thread::spawn(move || reap_session_process(&reap_sid));
+                    }
                 }
             }
         }
+        // 子进程退出后 stdout 管道关闭，兜底清理活跃表，避免残留句柄
+        let _ = ACTIVE_PROCESSES.lock().unwrap().remove(&sid_stdout);
     });
 
     // 后台线程异步监听 stderr
@@ -448,25 +507,19 @@ pub fn continue_session_rpc(session_id: String, prompt: String) -> Result<(), St
 /// 终止指定的 Session，或如果不提供 session_id 则终止全部 Session
 #[tauri::command]
 pub fn abort_session_rpc(session_id: Option<String>) -> Result<(), String> {
-    let mut lock = ACTIVE_PROCESSES.lock().unwrap();
-    if let Some(sid) = session_id {
-        if let Some(mut proc) = lock.remove(&sid) {
-            let abort_cmd = "{\"type\": \"abort\"}\n";
-            let _ = proc.stdin.write_all(abort_cmd.as_bytes());
-            let _ = proc.stdin.flush();
-            thread::sleep(std::time::Duration::from_millis(100));
-            let _ = proc.child.kill();
+    let procs: Vec<ActiveProcess> = {
+        let mut lock = ACTIVE_PROCESSES.lock().unwrap();
+        if let Some(sid) = session_id {
+            lock.remove(&sid).into_iter().collect()
+        } else {
+            let keys: Vec<String> = lock.keys().cloned().collect();
+            keys.into_iter().filter_map(|k| lock.remove(&k)).collect()
         }
-    } else {
-        let keys: Vec<String> = lock.keys().cloned().collect();
-        for k in keys {
-            if let Some(mut proc) = lock.remove(&k) {
-                let abort_cmd = "{\"type\": \"abort\"}\n";
-                let _ = proc.stdin.write_all(abort_cmd.as_bytes());
-                let _ = proc.stdin.flush();
-                let _ = proc.child.kill();
-            }
-        }
+    };
+
+    // 在锁外执行可能耗时的终止(等待退出)，避免阻塞其它会话的写入与回收
+    for proc in procs {
+        graceful_terminate(proc, true);
     }
     Ok(())
 }

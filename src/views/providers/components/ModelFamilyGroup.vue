@@ -16,6 +16,9 @@
           </svg>
         </div>
 
+        <!-- Family Brand Logo -->
+        <ModelLogo :model="{ id: props.family, family: props.family }" :size="20" class="rounded-md" />
+
         <span class="font-semibold text-xs text-foreground tracking-tight">
           {{ props.family }}
         </span>
@@ -55,6 +58,7 @@
 import { ref } from "vue";
 import type { ModelSchema } from "../../../types/index.js";
 import { useProviderStore } from "../../../stores/provider.js";
+import ModelLogo from "../../../components/ui/ModelLogo.vue";
 import ModelRow from "./ModelRow.vue";
 
 const props = defineProps<{
