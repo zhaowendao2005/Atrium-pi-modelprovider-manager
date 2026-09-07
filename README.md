@@ -8,8 +8,8 @@
 
 ## 🧭 架构与设计规范
 
-- 📖 **前端设计规范与范式**：参见 [docs/rules/前端设计规范和范式.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/docs/rules/%E5%89%8D%E7%AB%AF%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83%E5%92%8C%E8%8C%83%E5%BC%8F.md)。
-- 📖 **底层协议与规范分析**：参见 [docs/analysis_result/模型与提供商规范分析.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/docs/analysis_result/%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%8F%90%E4%BE%9B%E5%95%86%E8%A7%84%E8%8C%83%E5%BC%8F%E5%88%86%E6%9E%90.md)。
+- 📖 **前端设计规范与范式**：参见 [dev_docs/rules/前端设计规范和范式.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/dev_docs/rules/%E5%89%8D%E7%AB%AF%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83%E5%92%8C%E8%8C%83%E5%BC%8F.md)。
+- 📖 **底层协议与规范分析**：参见 [dev_docs/analysis_result/模型与提供商规范分析.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/dev_docs/analysis_result/%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%8F%90%E4%BE%9B%E5%95%86%E8%A7%84%E8%8C%83%E5%BC%8F%E5%88%86%E6%9E%90.md)。
 - 📖 **运行时职责**：Tauri 管理器负责复杂配置，Pi Extension 负责 Provider / Model 注册、hooks、patch 和 adapter，`/models` 与 `Alt+P` 提供快速模型选择 TUI。
 
 ---
