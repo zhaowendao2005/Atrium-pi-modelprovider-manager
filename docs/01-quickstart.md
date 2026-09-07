@@ -10,10 +10,10 @@
 
 ```bash
 # 临时运行
-pi -e ./dist/pi-modelprovider-manager/index.js
+pi -e ./dist/atrium-pi-modelprovider-manager/index.js
 
 # 或者放入 Pi 的扩展发现目录（推荐，每次启动自动就绪）
-# ~/.pi/agent/extensions/pi-modelprovider-manager/
+# ~/.pi/agent/extensions/atrium-pi-modelprovider-manager/
 ```
 
 ---
@@ -26,7 +26,7 @@ pi -e ./dist/pi-modelprovider-manager/index.js
 /model-manager
 ```
 
-也可以直接双击运行编译产物中的 `pi-modelprovider-manager.exe`。管理窗口支持单实例运行，即使已经在后台，再次输入命令也会把已有窗口平滑唤至前台。
+也可以直接双击运行编译产物中的 `atrium-pi-modelprovider-manager.exe`。管理窗口支持单实例运行，即使已经在后台，再次输入命令也会把已有窗口平滑唤至前台。
 
 ![管理面板首页](./images/02-provider-detail.png)
 

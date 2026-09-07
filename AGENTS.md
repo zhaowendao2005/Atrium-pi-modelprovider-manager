@@ -1,6 +1,6 @@
 # AGENTS.md
 
-欢迎来到 **Pi 模型提供商管理器（Pi Model Provider Manager）** 代码库。
+欢迎来到 **Atrium - Pi 模型提供商管理器（Atrium Pi Model Provider Manager）** 代码库。
 
 本仓库同时提供两类产品：
 

@@ -13,7 +13,7 @@
             <BrandLogo class="w-full h-full text-[#111111]" />
           </div>
           <span class="font-semibold text-sm tracking-tight text-foreground whitespace-nowrap">
-            Pi Model Hub
+            Atrium Pi Model Hub
           </span>
         </div>
 

@@ -26,7 +26,13 @@ pub fn is_development() -> bool {
 
 pub fn get_storage_dir() -> Result<PathBuf, String> {
     let home = home_dir().ok_or("Cannot resolve home directory")?;
-    let root = home.join(".pi").join("pi-modelprovider-manager-data");
+    let legacy_root = home.join(".pi").join("pi-modelprovider-manager-data");
+    let atrium_root = home.join(".pi").join("atrium-pi-modelprovider-manager-data");
+    let root = if atrium_root.exists() || !legacy_root.exists() {
+        atrium_root
+    } else {
+        legacy_root
+    };
     let dir = if is_development() { root.join("dev-cache") } else { root };
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;

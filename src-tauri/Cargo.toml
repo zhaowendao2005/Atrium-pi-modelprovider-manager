@@ -1,7 +1,7 @@
 [package]
-name = "pi-modelprovider-manager"
-version = "1.0.0"
-description = "Pi Model Provider Manager Desktop App"
+name = "atrium-pi-modelprovider-manager"
+version = "1.0.1"
+description = "Atrium - Pi Model Provider Manager Desktop App"
 authors = ["you"]
 edition = "2021"
 

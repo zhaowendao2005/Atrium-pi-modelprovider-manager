@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "pi-modelprovider-manager",
-  "version": "1.0.0",
-  "identifier": "com.pi.modelprovider.manager",
+  "productName": "atrium-pi-modelprovider-manager",
+  "version": "1.0.1",
+  "identifier": "com.atrium.pi.modelprovider.manager",
   "build": {
     "beforeDevCommand": "pnpm dev:ui",
     "devUrl": "http://localhost:8632",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Pi Model Provider Manager",
+        "title": "Atrium - Pi Model Provider Manager",
         "width": 1180,
         "height": 780,
         "minWidth": 900,

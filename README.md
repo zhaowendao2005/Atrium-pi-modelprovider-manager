@@ -1,8 +1,43 @@
-# Pi Model Provider Manager
+# Atrium - Pi Model Provider Manager
 
-**Pi Model Provider Manager** 是专为 **Pi (pi-coding-agent)** 打造的多模型与中转站管理器，包含：
-1. **Pi Agent 运行时扩展 (Extension)**：只读读取 `~/.pi/pi-modelprovider-manager-data/manager.db`，注册 Provider / Model，并执行有效配置、请求 hooks、adapter、补丁、上下文溢出自动恢复与链路追踪。
-2. **桌面端可视化管理面板 (Tauri + Vue 3 + Tailwind CSS + Pinia)**：采用 Apple / iOS 极简设计美学，提供可伸缩侧边栏、苹果风格自定义滚动条、模型系列分组展示及抽屉式（Drawer）参数配置。
+**Atrium (Atrium - Pi Model Provider Manager)** 是专为 **Pi (pi-coding-agent)** 打造的下一代现代化多模型、多中转站可视化管理与评测工作台。
+
+它同时具备双重产品形态：
+1. **Pi Agent 运行时扩展 (Extension)**：无缝挂载至 Pi Agent，提供底层请求钩子（Hooks）、多协议适配器（Adapters）、上下文溢出自动恢复、链路追踪以及终端快速切换器（TUI）；
+2. **桌面原生可视化工作台 (Tauri + Vue 3 + Tailwind CSS + Pinia)**：采用 Apple 极简设计范式，提供全流程模型管理、动态模型探测（`/v1/models`）、以及多模型同台竞技的**测试工作台（Test Arena）**。
+
+---
+
+## ✨ 核心特性
+
+- **现代 Apple 美学界面**：折叠侧边栏、细腻平滑过渡、卡片化布局与自定义 Apple 滚动条。
+- **本地优先（Local-First）与 SQLite 存储**：彻底弃用难以维护的冗长 YAML，所有配置、密钥与历史会话均持久化于本地 SQLite（`manager.db`），保障数据隐私与秒级加载。
+- **多协议原生适配（9 种协议）**：深度兼容 OpenAI、Anthropic、Grok (xAI)、Ollama、Google Gemini、DeepSeek、Mistral、OpenRouter 等，支持 Thinking Level 智能映射与参数清洗。
+- **海量内置预设与动态发现**：出厂自带 39+ 官方厂商规范与 1300+ 模型元数据，支持从中转站 `/v1/models` 端点一键自动拉取并分类挂载。
+- **模型测试竞技场（Benchmark Arena）**：
+  - 真实沙箱环境：每个测试卡片运行在完全隔离的工作空间；
+  - 评测指标全景图：首字延迟（TTFT）、生成耗时、双轨 TPS 吞吐、工具调用（Tool Calls）成功率与网络时序拆解。
+- **无感单实例桌面唤起**：在 Pi Agent 中输入 `/model-manager` 或直接运行桌面程序，支持单实例智能置顶聚焦，不重复弹出多余窗口。
+
+---
+
+## 📚 用户手册与文档导览
+
+项目提供详尽的模块化使用手册与深入指南，无论是在本地 Markdown 浏览，还是通过 GitHub Pages 在线查阅均可快速定标：
+
+| 章节 | 文档名 | 核心内容简介 |
+| :--- | :--- | :--- |
+| **00** | [项目概览与背景](docs/index.md) | 为什么开发 Atrium、解决的中转痛点与核心架构理念 |
+| **01** | [快速上手指南](docs/01-quickstart.md) | 3 分钟完成安装、桌面窗口唤起与添加第一个模型渠道 |
+| **02** | [提供商管理](docs/02-providers-management.md) | 中转站配置、端点鉴权、实时连通性测速与高级参数覆盖 |
+| **03** | [模型配置与挂载](docs/03-models-configuration.md) | 模型系列分组、Thinking 思考等级映射与 `/v1/models` 动态一键拉取 |
+| **04** | [生效配置体系](docs/04-effective-config-docs.md) | 参数继承与覆盖规则分析、三级生效溯源（Preset / Provider / Model） |
+| **05** | [模型测试竞技场](docs/05-testing-workbench.md) | 多模型同台竞技、沙箱工作空间、双轨 TPS 吞吐、首字延迟（TTFT）与请求链路图 |
+| **06** | [TUI 与运行时插件](docs/06-tui-and-extension.md) | Pi Agent 扩展运行时机制、`/models` 选择器与 `Alt+P` 快捷呼出 |
+| **07** | [系统设置与持久化](docs/07-settings-and-maintenance.md) | SQLite 数据库结构、开发与生产环境隔离机制、数据备份与迁移 |
+| **08** | [常见问题与排错手册](docs/08-troubleshooting.md) | 常见网络报错、适配器异常、多实例聚焦故障速查表 |
+
+> 💡 **提示**：仓库推送后，可通过 GitHub Pages 在线浏览具备**全局实时检索**与**章节树**的高清文档站。
 
 ---
 
@@ -10,66 +45,74 @@
 
 - 📖 **前端设计规范与范式**：参见 [dev_docs/rules/前端设计规范和范式.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/dev_docs/rules/%E5%89%8D%E7%AB%AF%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83%E5%92%8C%E8%8C%83%E5%BC%8F.md)。
 - 📖 **底层协议与规范分析**：参见 [dev_docs/analysis_result/模型与提供商规范分析.md](file:///D:/code/javascript/pi-extension/pi-modelprovider-manager/dev_docs/analysis_result/%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%8F%90%E4%BE%9B%E5%95%86%E8%A7%84%E8%8C%83%E5%BC%8F%E5%88%86%E6%9E%90.md)。
-- 📖 **运行时职责**：Tauri 管理器负责复杂配置，Pi Extension 负责 Provider / Model 注册、hooks、patch 和 adapter，`/models` 与 `Alt+P` 提供快速模型选择 TUI。
+- 📖 **快捷键支持**：Pi Agent 内键入 `/models` 或按下 `Alt+P` 即可呼出模型快速切换选择器。
 
 ---
 
-## 环境与持久化隔离
+## 📦 打包产物结构 (`dist/`)
 
-- 生产默认使用 `~/.pi/pi-modelprovider-manager-data/`。
-- 开发使用 `~/.pi/pi-modelprovider-manager-data/dev-cache/`，数据库、模板、备份、导出及测试工作区均隔离。不自动复制生产配置或密钥。
-- `pnpm dev` 自动设置 `PI_MODEL_MANAGER_ENV=development` 并生成开发模板；直接 `tauri dev` 的调试程序默认也使用开发数据。
-- 临时测试 Extension 时，在启动 Pi 的终端中设置 `PI_MODEL_MANAGER_ENV=development`；不设置则使用生产数据。Extension 启动的桌面程序继承同一环境。
-- 默认 Tab 按最近成功选择时间降序排列，未使用模型保持配置顺序。记录存储在各自 `manager.db` 的 `app_meta.model_manager_recent_usage`，最多保留 100 个模型；搜索时匹配相关性优先。记录范围为本扩展选择器，不代表全部 Pi 模型请求历史。
-- 回归测试：`node scripts/test-runtime.mjs`。
+运行 `pnpm build` 命令将一键构建并将 **独立插件包** 输出到 `dist/atrium-pi-modelprovider-manager/`：
 
-## 📦 最终打包产物结构 (`dist/`)
-
-运行 `pnpm build` 命令将一键构建并将 **插件包产物** 与 **Tauri 二进制可执行文件** 输出到 `dist/` 目录：
-
-```
-dist/
-└── pi-modelprovider-manager/ # 标准 Pi Agent 插件使用单元
-    ├── index.js              # Pi Agent Extension 插件编译产物
-    ├── index.d.ts            # TypeScript 完整类型定义声明文件
-    ├── index.js.map          # SourceMap 调试文件
-    ├── bin/                  # Tauri 桌面端二进制程序产物
-    │   └── pi-modelprovider-manager.exe
-    └── ui/                   # 桌面端 / Web 前端静态资源
-        ├── index.html
-    └── assets/
-        ├── index-*.css       # Tailwind + iOS 主题样式包
-        └── index-*.js        # Vue 3 + Pinia + 组件逻辑包
+```text
+dist/atrium-pi-modelprovider-manager/
+├── index.js                     # Pi Extension 插件入口代码
+├── index.d.ts                   # TypeScript 类型声明定义
+├── adapters/                    # 运行时多协议适配模块（如 grok-core 等）
+│   ├── grok-core.js
+│   └── grok-core.d.ts
+├── bin/                         # Tauri 桌面端二进制程序（前端已静态内嵌）
+│   └── atrium-pi-modelprovider-manager.exe
+├── templates/                   # 内置基准评测任务集（供测试竞技场动态加载）
+│   └── test_tasks/
+│       ├── 01_site_availability/
+│       ├── 02_deep_reasoning/
+│       ├── 03_multi_tool_pipeline/
+│       └── ...
+├── README.md                    # 随包说明文档
+└── package.json                 # 专为插件单元独立运行设计的元数据
 ```
 
 ---
 
-## ⚙️ 构建与开发命令列表
+## ⚙️ 常用构建与开发命令
 
 | 命令 | 执行动作 | 说明 |
 | :--- | :--- | :--- |
-| **`pnpm build`** | `pnpm clean && pnpm build:ext && pnpm build:tauri && pnpm assemble:plugin` | **一键全量打包**：输出 `dist/pi-modelprovider-manager/` 标准插件单元，包含 Extension、UI 和 Tauri 可执行文件 |
-| **`pnpm build:ext`** | `tsup` | **仅构建 Extension 插件包**：生成待组装的 `dist/index.js` 与 `dist/index.d.ts` |
-| **`pnpm build:ui`** | `vue-tsc --noEmit && vite build` | **仅构建 UI 静态资源**：类型检查并输出至 `dist/ui/` |
-| **`pnpm build:tauri`** | `tauri build --no-bundle && copy-binary` | **仅编译 Tauri 二进制可执行程序**并暂存到 `dist/bin/` |
-| **`pnpm build:no-tauri`**| `pnpm clean && pnpm build:ext && pnpm build:ui && pnpm assemble:plugin` | 快速构建插件与前端（跳过 Rust 编译） |
-| **`pnpm clean`** | `rimraf dist` | 清理 `dist/` 构建目录 |
-| **`pnpm dev`** | `tauri dev` | 启动 Tauri 桌面端开发环境（同时自动启动前端开发服务器） |
-| **`pnpm dev:ui`** | `vite` | 仅启动本地 Web 前端热重载开发服务器 (http://localhost:8632) |
-| **`pnpm tauri dev`** | `tauri dev` | 启动本地 Tauri 桌面端开发环境 |
+| **`pnpm build`** | `pnpm clean && pnpm build:ext && pnpm build:tauri && pnpm assemble:plugin` | **一键全量打包**：输出标准插件单元，包含 Extension、UI 内嵌可执行文件及模板 |
+| **`pnpm publish:plugin`** | `npm publish ./dist/atrium-pi-modelprovider-manager --access public` | **一键发布**：将组装完毕的独立插件发布至 npm |
+| **`pnpm dev`** | `node scripts/dev.mjs` | **联调开发**：同步最新模型预设，构建扩展，并启动本地 Tauri 桌面热重载 |
+| **`pnpm dev:ui`** | `vite` | 仅启动纯 Web 前端开发服务器 (http://localhost:8632) |
+| **`pnpm build:ext`** | `tsup` | 仅构建 Extension 扩展与适配器（输出至 `dist/`） |
+| **`pnpm build:ui`** | `vue-tsc --noEmit && vite build` | 仅对前端进行类型检查并生成嵌入式静态资产 |
+| **`pnpm build:tauri`** | `tauri build --no-bundle && copy-binary` | 仅编译桌面端 Rust 二进制程序 |
+| **`pnpm typecheck`** | `tsc --noEmit` | 全局 TypeScript 类型检查 |
 
 ---
 
-## 🚀 插件加载与使用方式
+## 🚀 安装与使用方式
 
-### 方式 1：使用已构建的产物直接加载
+### 方式 1：通过 npm / Pi 插件命令安装（发布后）
 ```bash
-pi -e ./dist/pi-modelprovider-manager/index.js
+pi install atrium-pi-modelprovider-manager
 ```
 
-### 方式 2：放入 Pi 自动发现目录（支持 `/reload`）
-- **全局路径**：`~/.pi/agent/extensions/pi-modelprovider-manager/`
-- **项目级路径**：`.pi/extensions/pi-modelprovider-manager/`
+### 方式 2：使用本地构建产物直接加载
+```bash
+pi -e ./dist/atrium-pi-modelprovider-manager/index.js
+```
 
-### 方式 3：运行桌面管理程序
-直接双击运行 `./dist/pi-modelprovider-manager/bin/pi-modelprovider-manager.exe` 打开可视化配置管理器；在 Pi Agent 内执行 `/model-manager` 也会启动同一个管理器。管理器使用 Tauri 单实例插件，重复执行会恢复最小化窗口并将其置于前台，不永久置顶。开发和生产各自只允许一个窗口。
+### 方式 3：全局放入 Pi 扩展自动加载目录（支持 `/reload`）
+- **全局路径**：`~/.pi/agent/extensions/atrium-pi-modelprovider-manager/`
+- **项目级路径**：`.pi/extensions/atrium-pi-modelprovider-manager/`
+
+### 方式 4：打开桌面可视化管理器
+- **在 Pi Agent 内部**：键入命令 `/model-manager`
+- **独立运行**：直接双击运行 `./dist/atrium-pi-modelprovider-manager/bin/atrium-pi-modelprovider-manager.exe`
+
+---
+
+## 🛡️ 环境与持久化隔离
+
+- **生产环境**：默认读写 `~/.pi/atrium-pi-modelprovider-manager-data/`（自动兼容历史 `pi-modelprovider-manager-data/`，保障数据无缝过渡）。
+- **开发调试**：开发环境自动隔离至 `dev-cache/` 子目录，拥有独立数据库与模板，绝不污染生产密钥与日常配置。
+- **最近使用记录**：自动按最近调用模型智能排序，支持最多 100 条使用轨迹记录。

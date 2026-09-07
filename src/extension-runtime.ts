@@ -236,11 +236,17 @@ export class PiExtensionRuntime {
 
   private async launchDesktopManager(ctx: ExtensionCommandContext): Promise<void> {
     const extensionDir = path.dirname(fileURLToPath(import.meta.url));
-    const executableName = process.platform === "win32" ? "pi-modelprovider-manager.exe" : "pi-modelprovider-manager";
+    const exeName = process.platform === "win32" ? "atrium-pi-modelprovider-manager.exe" : "atrium-pi-modelprovider-manager";
+    const legacyExeName = process.platform === "win32" ? "pi-modelprovider-manager.exe" : "pi-modelprovider-manager";
     const candidates = [
-      path.join(extensionDir, "bin", executableName),
-      path.join(extensionDir, "..", "bin", executableName),
-      path.join(process.cwd(), "dist", "pi-modelprovider-manager", "bin", executableName),
+      path.join(extensionDir, "bin", exeName),
+      path.join(extensionDir, "bin", legacyExeName),
+      path.join(extensionDir, "..", "bin", exeName),
+      path.join(extensionDir, "..", "bin", legacyExeName),
+      path.join(process.cwd(), "dist", "atrium-pi-modelprovider-manager", "bin", exeName),
+      path.join(process.cwd(), "dist", "atrium-pi-modelprovider-manager", "bin", legacyExeName),
+      path.join(process.cwd(), "dist", "pi-modelprovider-manager", "bin", exeName),
+      path.join(process.cwd(), "dist", "pi-modelprovider-manager", "bin", legacyExeName),
     ];
     const executable = candidates.find((candidate) => existsSync(candidate));
     if (!executable) {

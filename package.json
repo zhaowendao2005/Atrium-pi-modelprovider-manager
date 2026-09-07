@@ -1,7 +1,7 @@
 {
-  "name": "pi-modelprovider-manager",
-  "version": "1.0.0",
-  "description": "Pi Model Provider Manager with Visual Desktop UI and Pi Agent Extension",
+  "name": "atrium-pi-modelprovider-manager",
+  "version": "1.0.1",
+  "description": "Atrium - Pi Model Provider Manager with Visual Desktop UI and Pi Agent Extension",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
@@ -26,9 +26,14 @@
     "build:no-tauri": "pnpm clean && pnpm build:ext && pnpm build:ui && pnpm assemble:plugin",
     "build": "pnpm clean && pnpm build:ext && pnpm build:tauri && pnpm assemble:plugin",
     "build:all": "pnpm build",
+    "publish:plugin": "npm publish ./dist/atrium-pi-modelprovider-manager --access public",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "keywords": [
     "pi",

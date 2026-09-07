@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = path.resolve(".");
 const dist = path.join(root, "dist");
-const packageDir = path.join(dist, "pi-modelprovider-manager");
+const packageDir = path.join(dist, "atrium-pi-modelprovider-manager");
 
 fs.rmSync(packageDir, { recursive: true, force: true });
 fs.mkdirSync(packageDir, { recursive: true });
@@ -51,11 +51,19 @@ const pluginPkg = {
   type: "module",
   license: rootPkg.license || "MIT",
   keywords: rootPkg.keywords || [],
+  publishConfig: rootPkg.publishConfig || {
+    access: "public",
+    registry: "https://registry.npmjs.org/",
+  },
   pi: {
     extensions: ["./index.js"],
   },
   dependencies: rootPkg.dependencies || {},
 };
+if (rootPkg.author) pluginPkg.author = rootPkg.author;
+if (rootPkg.repository) pluginPkg.repository = rootPkg.repository;
+if (rootPkg.homepage) pluginPkg.homepage = rootPkg.homepage;
+if (rootPkg.bugs) pluginPkg.bugs = rootPkg.bugs;
 fs.writeFileSync(path.join(packageDir, "package.json"), JSON.stringify(pluginPkg, null, 2) + "\n");
 
 // 6. 测试任务模板（供 Tauri 测试工作台在运行时发现与扩展）

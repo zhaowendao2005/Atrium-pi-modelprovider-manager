@@ -79,8 +79,16 @@ function formatProviderDisplayName(id: string): string {
  *    - schemas.json (标准字段元数据)
  *    - presets-meta.json (版本标记)
  */
+function getDefaultStorageDir(): string {
+  const home = os.homedir();
+  const legacyRoot = path.join(home, ".pi", "pi-modelprovider-manager-data");
+  const atriumRoot = path.join(home, ".pi", "atrium-pi-modelprovider-manager-data");
+  const root = fs.existsSync(atriumRoot) || !fs.existsSync(legacyRoot) ? atriumRoot : legacyRoot;
+  return process.env.PI_MODEL_MANAGER_ENV === "development" ? path.join(root, "dev-cache") : root;
+}
+
 export async function syncPresetsAndSchemas(targetDir?: string, force = false): Promise<SyncPresetsResult> {
-  const baseDir = targetDir || path.join(os.homedir(), ".pi", "pi-modelprovider-manager-data");
+  const baseDir = targetDir || getDefaultStorageDir();
   ensureDirSync(baseDir);
 
   const presetsDir = path.join(baseDir, "presets");
