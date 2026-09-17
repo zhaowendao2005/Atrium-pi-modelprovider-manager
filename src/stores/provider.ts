@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import type { ProviderSchema, ModelSchema } from "../types/index.js";
-import { dbLoadAllProviders, dbSaveProvider, dbSaveModel, dbDeleteProvider, dbDeleteModel, dbSaveSettings } from "../utils/sqlite-storage.js";
+import { dbLoadAllProviders, dbSaveProvider, dbSaveModel, dbDeleteProvider, dbDeleteModel, dbSaveSettings, dbSetProvidersEnabled } from "../utils/sqlite-storage.js";
 import { useSettingsStore } from "./settings.js";
+import { useDrawerStore } from "./windows/drawer.js";
 import { safeFetch } from "../utils/http.js";
 
 export const useProviderStore = defineStore("provider", {
@@ -13,6 +14,7 @@ export const useProviderStore = defineStore("provider", {
     isTestingConnection: false as boolean,
     testResult: null as { ok: boolean; message: string; latencyMs?: number } | null,
     autoSaveStatus: "idle" as "idle" | "saving" | "saved" | "error",
+    isBatchUpdating: false as boolean,
     saveTimer: null as any,
   }),
 
@@ -182,6 +184,52 @@ export const useProviderStore = defineStore("provider", {
         p.updatedAt = Date.now();
         dbSaveProvider(p).catch(console.error);
         this.persist(true);
+      }
+    },
+
+    /**
+     * 批量启用 / 禁用提供商。
+     * 通过 SQLite 单事务原子写入，失败整体回滚，不会出现部分成功的脏状态。
+     * 仅修改 enabled 与 updatedAt，不触碰密钥、模型等其他配置。
+     * @returns updated = 实际变更数量；skipped = 状态本就一致而被跳过的数量
+     */
+    async setProvidersEnabled(
+      ids: string[],
+      enabled: boolean
+    ): Promise<{ updated: number; skipped: number }> {
+      const uniqueIds = Array.from(new Set(ids.filter((id) => !!id)));
+      if (uniqueIds.length === 0) return { updated: 0, skipped: 0 };
+
+      const targets = this.providers.filter((p) => uniqueIds.includes(p.id));
+      const pending = targets.filter((p) => (p.enabled !== false) !== enabled);
+      const skipped = targets.length - pending.length;
+
+      // 状态无需变更时直接返回，避免无意义写入
+      if (pending.length === 0) return { updated: 0, skipped };
+
+      const pendingIds = new Set(pending.map((p) => p.id));
+      this.isBatchUpdating = true;
+      try {
+        await dbSetProvidersEnabled(pending.map((p) => p.id), enabled);
+
+        const now = Date.now();
+        for (const p of this.providers) {
+          if (pendingIds.has(p.id)) {
+            p.enabled = enabled;
+            p.updatedAt = now;
+          }
+        }
+
+        // 同步编辑抽屉中的副本，防止其后续自动保存将旧的 enabled 状态回写覆盖批量结果
+        const drawerStore = useDrawerStore();
+        if (drawerStore.editingProvider && pendingIds.has(drawerStore.editingProvider.id)) {
+          drawerStore.editingProvider.enabled = enabled;
+          drawerStore.editingProvider.updatedAt = now;
+        }
+
+        return { updated: pending.length, skipped };
+      } finally {
+        this.isBatchUpdating = false;
       }
     },
 

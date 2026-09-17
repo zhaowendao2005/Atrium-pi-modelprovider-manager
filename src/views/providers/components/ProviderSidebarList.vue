@@ -6,18 +6,38 @@
         <h2 class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           提供商 ({{ providerStore.filteredProviders.length }})
         </h2>
-        <Button
-          size="sm"
-          variant="primary"
-          class="h-6 px-2 text-xs gap-1"
-          @click="drawerStore.openProviderDrawer('provider-add')"
-        >
-          <!-- Plus SVG -->
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>新建</span>
-        </Button>
+        <div class="flex items-center gap-1">
+          <!-- 批量管理开关 -->
+          <button
+            type="button"
+            :title="selectionStore.isBatchMode ? '退出批量管理' : '批量启用 / 禁用提供商'"
+            class="h-6 w-6 flex items-center justify-center rounded-md border transition-colors"
+            :class="[
+              selectionStore.isBatchMode
+                ? 'bg-primary/10 border-primary/50 text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-accent',
+            ]"
+            @click="toggleBatchMode"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5h10M9 12h10M9 19h10" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 5l1 1 1.5-2M4 12l1 1 1.5-2M4 19l1 1 1.5-2" />
+            </svg>
+          </button>
+
+          <Button
+            size="sm"
+            variant="primary"
+            class="h-6 px-2 text-xs gap-1"
+            @click="drawerStore.openProviderDrawer('provider-add')"
+          >
+            <!-- Plus SVG -->
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>新建</span>
+          </Button>
+        </div>
       </div>
 
       <!-- Search Input -->
@@ -44,12 +64,28 @@
           :key="provider.id"
           class="group/item relative px-2.5 py-2 rounded-xl border transition-all duration-150 cursor-pointer text-left flex items-center justify-between gap-2"
           :class="[
-            providerStore.activeProviderId === provider.id
-              ? 'bg-primary/10 border-primary/40 shadow-sm shadow-primary/10'
-              : 'bg-card/60 hover:bg-accent/60 border-transparent hover:border-border/60',
+            selectionStore.isBatchMode && selectionStore.isSelected(provider.id)
+              ? 'bg-primary/10 border-primary/50'
+              : providerStore.activeProviderId === provider.id
+                ? 'bg-primary/10 border-primary/40 shadow-sm shadow-primary/10'
+                : 'bg-card/60 hover:bg-accent/60 border-transparent hover:border-border/60',
           ]"
-          @click="providerStore.setActiveProvider(provider.id)"
+          @click="onProviderClick(provider.id)"
         >
+          <!-- 批量模式复选框 -->
+          <span
+            v-if="selectionStore.isBatchMode"
+            class="w-4 h-4 rounded-[5px] border flex items-center justify-center flex-shrink-0 transition-colors"
+            :class="[
+              selectionStore.isSelected(provider.id)
+                ? 'bg-primary border-primary text-primary-foreground'
+                : 'border-slate-300 dark:border-slate-600 text-transparent',
+            ]"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
           <!-- Left: Provider Logo with Status dot + Title -->
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
             <div class="relative flex-shrink-0 flex items-center justify-center">
@@ -68,8 +104,8 @@
 
           <!-- Right: API Type Badge & Hover Actions -->
           <div class="flex items-center gap-1.5 flex-shrink-0">
-            <!-- Quick Actions on hover -->
-            <div class="hidden group-hover/item:flex items-center gap-1">
+            <!-- Quick Actions on hover (批量模式下隐藏，避免误操作) -->
+            <div v-if="!selectionStore.isBatchMode" class="hidden group-hover/item:flex items-center gap-1">
               <button
                 type="button"
                 title="编辑提供商"
@@ -100,20 +136,132 @@
         </div>
       </div>
     </AppleScrollArea>
+
+    <!-- 批量操作栏 -->
+    <ProviderBatchBar
+      v-if="selectionStore.isBatchMode"
+      :selected-count="selectionStore.selectedCount"
+      :visible-count="visibleProviderIds.length"
+      :all-selected="allVisibleSelected"
+      :busy="selectionStore.isApplying"
+      :pending-action="batchPendingAction"
+      :message="batchMessage"
+      @toggle-all="toggleSelectAll"
+      @apply="applyBatch"
+      @exit="toggleBatchMode"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch } from "vue";
 import { useProviderStore } from "../../../stores/provider.js";
 import { useDrawerStore } from "../../../stores/windows/drawer.js";
+import { useProviderSelectionStore } from "../../../stores/windows/provider-selection.js";
 import Button from "../../../components/ui/Button.vue";
 import Badge from "../../../components/ui/Badge.vue";
 import ProviderLogo from "../../../components/ui/ProviderLogo.vue";
 import AppleScrollArea from "../../../components/ui/AppleScrollArea.vue";
+import ProviderBatchBar from "./ProviderBatchBar.vue";
 import type { ApiProtocol } from "../../../types/index.js";
 
 const providerStore = useProviderStore();
 const drawerStore = useDrawerStore();
+const selectionStore = useProviderSelectionStore();
+
+const batchMessage = ref<{ type: "success" | "info" | "error"; text: string } | null>(null);
+const batchPendingAction = ref<"enable" | "disable" | null>(null);
+let messageTimer: ReturnType<typeof setTimeout> | null = null;
+
+const visibleProviderIds = computed(() => providerStore.filteredProviders.map((p) => p.id));
+
+const allVisibleSelected = computed(
+  () =>
+    visibleProviderIds.value.length > 0 &&
+    visibleProviderIds.value.every((id) => selectionStore.isSelected(id))
+);
+
+// 搜索范围变化时清空选择，避免误操作到已隐藏的提供商
+watch(
+  () => providerStore.searchQuery,
+  () => {
+    if (selectionStore.isBatchMode) selectionStore.clearSelection();
+  }
+);
+
+function onProviderClick(id: string) {
+  if (selectionStore.isBatchMode) {
+    selectionStore.toggleSelection(id);
+  } else {
+    providerStore.setActiveProvider(id);
+  }
+}
+
+function toggleBatchMode() {
+  if (selectionStore.isBatchMode) {
+    selectionStore.exitBatchMode();
+  } else {
+    selectionStore.enterBatchMode();
+  }
+  batchMessage.value = null;
+  if (messageTimer) {
+    clearTimeout(messageTimer);
+    messageTimer = null;
+  }
+}
+
+function toggleSelectAll() {
+  if (allVisibleSelected.value) {
+    selectionStore.clearSelection();
+  } else {
+    selectionStore.selectAll(visibleProviderIds.value);
+  }
+}
+
+async function applyBatch(nextEnabled: boolean) {
+  const ids = [...selectionStore.selectedIds];
+  if (ids.length === 0) return;
+
+  if (
+    !nextEnabled &&
+    !confirm(
+      `确定要禁用所选 ${ids.length} 个提供商吗？禁用后不会向 Pi 运行时注册，其密钥与模型配置不会被删除。`
+    )
+  ) {
+    return;
+  }
+
+  selectionStore.isApplying = true;
+  batchPendingAction.value = nextEnabled ? "enable" : "disable";
+  batchMessage.value = null;
+
+  try {
+    const res = await providerStore.setProvidersEnabled(ids, nextEnabled);
+    batchMessage.value =
+      res.updated === 0
+        ? { type: "info", text: `所选提供商已全部${nextEnabled ? "启用" : "禁用"}` }
+        : {
+            type: "success",
+            text: `已${nextEnabled ? "启用" : "禁用"} ${res.updated} 个提供商${
+              res.skipped ? `，${res.skipped} 个状态未变` : ""
+            }`,
+          };
+
+    if (messageTimer) clearTimeout(messageTimer);
+    messageTimer = setTimeout(() => {
+      batchMessage.value = null;
+    }, 3000);
+  } catch (err: any) {
+    // 保存失败时保留选择，便于用户直接重试
+    batchMessage.value = {
+      type: "error",
+      text: `批量操作失败：${err?.message || String(err)}`,
+    };
+  } finally {
+    batchPendingAction.value = null;
+    selectionStore.isApplying = false;
+  }
+}
 
 function formatProtocol(api?: ApiProtocol) {
   if (!api) return "OpenAI";

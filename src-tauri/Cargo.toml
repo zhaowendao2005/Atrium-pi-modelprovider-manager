@@ -1,6 +1,6 @@
 [package]
 name = "atrium-pi-modelprovider-manager"
-version = "1.0.1"
+version = "1.0.2"
 description = "Atrium - Pi Model Provider Manager Desktop App"
 authors = ["you"]
 edition = "2021"
@@ -22,6 +22,7 @@ chrono = "0.4"
 md5 = "0.7"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 include_dir = "0.7"
+futures-util = "0.3"
 
 [features]
 default = ["custom-protocol"]

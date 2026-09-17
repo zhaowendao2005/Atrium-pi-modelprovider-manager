@@ -1,13 +1,43 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { ProviderPresetSummary, ProviderPresetDetails, ModelSchema, ProviderSchema } from "../types/index.js";
-import { fetchPresetIndex, fetchProviderPreset } from "../utils/sqlite-storage.js";
+import { fetchPresetIndex, fetchProviderPreset, fetchPresetMeta, updatePresetsFromRemote, type PresetMeta } from "../utils/sqlite-storage.js";
 
 export const usePresetsStore = defineStore("presets", () => {
   const isIndexLoaded = ref(false);
   const providerIndex = ref<ProviderPresetSummary[]>([]);
   const providerCache = ref<Map<string, ProviderPresetDetails>>(new Map());
   const isLoadingPreset = ref(false);
+  const isUpdatingPresets = ref(false);
+  const presetUpdateFeedback = ref("");
+  const presetUpdateSuccess = ref(true);
+  const presetMeta = ref<PresetMeta>({ version: "unknown", provider_count: 0, model_count: 0 });
+
+  async function loadPresetMeta() {
+    presetMeta.value = await fetchPresetMeta();
+  }
+
+  async function handleUpdatePresets() {
+    if (isUpdatingPresets.value) return;
+    isUpdatingPresets.value = true;
+    presetUpdateFeedback.value = "正在从 Pi 远端同步模型预设…";
+    try {
+      const result = await updatePresetsFromRemote(true);
+      presetUpdateSuccess.value = result.success;
+      presetUpdateFeedback.value = result.message;
+      if (result.success) {
+        providerCache.value.clear();
+        isIndexLoaded.value = false;
+        await loadIndex();
+        await loadPresetMeta();
+      }
+    } catch (err) {
+      presetUpdateSuccess.value = false;
+      presetUpdateFeedback.value = `更新失败: ${String(err)}`;
+    } finally {
+      isUpdatingPresets.value = false;
+    }
+  }
 
   /**
    * 渐进式 Level 0: 仅加载轻量提供商索引列表 (~2KB)
@@ -194,6 +224,8 @@ export const usePresetsStore = defineStore("presets", () => {
   }
 
   return {
+    isUpdatingPresets, presetUpdateFeedback, presetUpdateSuccess, presetMeta,
+    loadPresetMeta, handleUpdatePresets,
     isIndexLoaded,
     providerIndex,
     providerCache,

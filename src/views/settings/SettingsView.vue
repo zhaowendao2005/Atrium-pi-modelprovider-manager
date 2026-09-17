@@ -47,12 +47,44 @@
           <div class="grid grid-cols-3 gap-3 text-xs"><div class="p-3 rounded-xl bg-muted/40 border border-border/50"><span class="text-muted-foreground">模型映射</span><strong class="block mt-1">{{ registryStats.totalModels }}</strong></div><div class="p-3 rounded-xl bg-muted/40 border border-border/50"><span class="text-muted-foreground">内置预设</span><strong class="block mt-1">{{ registryStats.presetCount }}</strong></div><div class="p-3 rounded-xl bg-muted/40 border border-border/50"><span class="text-muted-foreground">动态数据</span><strong class="block mt-1">{{ registryStats.dynamicCount }}</strong></div></div>
           <div v-if="updateFeedback" class="text-xs px-3 py-2 rounded-xl bg-primary/10 text-primary">{{ updateFeedback }}</div>
         </section>
+
+        <section class="p-5 rounded-2xl bg-card border border-border/80 shadow-sm flex flex-col gap-3.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-sm text-foreground">官方模型预设库</h3>
+              <p class="text-xs text-muted-foreground">从 Pi 远端 API 获取主流提供商的最新模型预设</p>
+            </div>
+            <Button size="sm" variant="outline" class="text-xs" :loading="isUpdatingPresets" @click="handleUpdatePresets">更新预设</Button>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-xs">
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50">
+              <span class="text-muted-foreground">提供商数量</span>
+              <strong class="block mt-1">{{ presetMeta.provider_count }}</strong>
+            </div>
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50">
+              <span class="text-muted-foreground">模型总数</span>
+              <strong class="block mt-1">{{ presetMeta.model_count }}</strong>
+            </div>
+            <div class="p-3 rounded-xl bg-muted/40 border border-border/50">
+              <span class="text-muted-foreground">版本</span>
+              <strong class="block mt-1 text-xs truncate">{{ presetMeta.version }}</strong>
+            </div>
+          </div>
+          <div v-if="presetMeta.updated_at" class="text-[11px] text-muted-foreground">
+            最后更新: {{ formatTimestamp(presetMeta.updated_at) }}
+          </div>
+          <div v-if="presetUpdateFeedback" class="text-xs px-3 py-2 rounded-xl" :class="presetUpdateSuccess ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive border border-destructive/20'">
+            {{ presetUpdateFeedback }}
+          </div>
+        </section>
       </div>
     </AppleScrollArea>
   </div>
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+import { usePresetsStore } from "../../stores/presets.js";
 import { onMounted, ref } from "vue";
 import { useSettingsStore } from "../../stores/settings.js";
 import { getRegistryStats, checkFamilyMapUpdate } from "../../utils/model-family-registry.js";
@@ -70,6 +102,9 @@ const isRefreshing = ref(false);
 const isUpdatingRegistry = ref(false);
 const updateFeedback = ref("");
 const registryStats = ref(getRegistryStats());
+const presetsStore = usePresetsStore();
+const { isUpdatingPresets, presetUpdateFeedback, presetUpdateSuccess, presetMeta } = storeToRefs(presetsStore);
+const { loadPresetMeta, handleUpdatePresets } = presetsStore;
 
 async function refreshDatabase() {
   isRefreshing.value = true; databaseError.value = "";
@@ -83,5 +118,18 @@ async function exportJson() {
 }
 async function backupDatabase() { try { const target = await dbBackup(); updateFeedback.value = `数据库已备份: ${target}`; } catch (err) { databaseError.value = `数据库备份失败: ${err instanceof Error ? err.message : String(err)}`; } }
 async function handleCheckRegistryUpdate() { isUpdatingRegistry.value = true; updateFeedback.value = ""; try { const result = await checkFamilyMapUpdate(true); registryStats.value = getRegistryStats(); updateFeedback.value = result.message; } catch (err) { updateFeedback.value = `检查失败: ${err instanceof Error ? err.message : String(err)}`; } finally { isUpdatingRegistry.value = false; } }
-onMounted(refreshDatabase);
+
+function formatTimestamp(timestamp: string): string {
+  try {
+    const date = new Date(timestamp);
+    return date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return timestamp;
+  }
+}
+
+onMounted(() => {
+  refreshDatabase();
+  loadPresetMeta();
+});
 </script>

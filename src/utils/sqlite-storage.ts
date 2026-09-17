@@ -88,6 +88,17 @@ export async function dbSaveModel(providerId: string, model: ModelSchema): Promi
 }
 
 /**
+ * 批量设置提供商的启用状态（Rust 端单事务原子写入，失败整体回滚）。
+ * 仅修改 enabled 与 updated_at，不会覆盖密钥、模型等配置。
+ * @returns 实际发生状态变更的提供商数量
+ */
+export async function dbSetProvidersEnabled(ids: string[], enabled: boolean): Promise<number> {
+  if (!isTauriEnvironment()) throw new Error("SQLite is unavailable outside the Tauri desktop runtime");
+  const updated = (await invoke("db_set_providers_enabled", { ids, enabled })) as number;
+  return typeof updated === "number" ? updated : 0;
+}
+
+/**
  * 从 SQLite 中删除提供商
  */
 export async function dbDeleteProvider(id: string): Promise<void> {
@@ -149,4 +160,56 @@ export async function fetchProviderPreset(providerId: string): Promise<ProviderP
     }
   }
   return null;
+}
+
+/**
+ * 获取预设元数据信息
+ */
+export interface PresetMeta {
+  version: string;
+  provider_count: number;
+  model_count: number;
+  updated_at?: string;
+  last_remote_check?: number;
+}
+
+export async function fetchPresetMeta(): Promise<PresetMeta> {
+  if (isTauriEnvironment()) {
+    try {
+      const res = await invoke("get_preset_meta");
+      return res as PresetMeta;
+    } catch (err) {
+      console.warn("[sqlite-storage] get_preset_meta error:", err);
+      return { version: "unknown", provider_count: 0, model_count: 0 };
+    }
+  }
+  return { version: "unknown", provider_count: 0, model_count: 0 };
+}
+
+/**
+ * 从 Pi 远程 API 更新预设数据
+ */
+export async function updatePresetsFromRemote(force: boolean = false): Promise<{
+  success: boolean;
+  message: string;
+  provider_count: number;
+  model_count: number;
+  updated_providers: string[];
+}> {
+  if (isTauriEnvironment()) {
+    try {
+      const res = await invoke("update_presets_from_remote", { force });
+      return res as any;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        message: `更新失败: ${errorMsg}`,
+        provider_count: 0,
+        model_count: 0,
+        updated_providers: [],
+      };
+    }
+  }
+  throw new Error("Tauri runtime is unavailable");
 }

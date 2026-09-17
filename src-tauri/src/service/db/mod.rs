@@ -300,6 +300,40 @@ pub fn db_save_provider(state: tauri::State<DbState>, provider: serde_json::Valu
     tx.commit().map_err(|e| e.to_string())
 }
 
+/// 批量启用 / 禁用提供商：单事务原子写入，失败整体回滚。
+/// 仅更新 enabled 与 updated_at，不触碰密钥、模型及其他配置。
+/// 返回实际发生状态变更的提供商数量。
+#[tauri::command]
+pub fn db_set_providers_enabled(
+    state: tauri::State<DbState>,
+    ids: Vec<String>,
+    enabled: bool,
+) -> Result<usize, String> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let now = chrono_now_ms();
+    let flag: i64 = if enabled { 1 } else { 0 };
+
+    let mut updated = 0usize;
+    {
+        let mut stmt = tx
+            .prepare("UPDATE providers SET enabled = ?1, updated_at = ?2 WHERE id = ?3 AND enabled <> ?1")
+            .map_err(|e| e.to_string())?;
+        for id in &ids {
+            updated += stmt
+                .execute(params![flag, now, id])
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(updated)
+}
+
 #[tauri::command]
 pub fn db_save_model(state: tauri::State<DbState>, provider_id: String, model: serde_json::Value) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
